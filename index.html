@@ -549,15 +549,6 @@ async function addToRosterByName(name) {
 // ══════════════════════════════════
 // LISTENERS
 // ══════════════════════════════════
-function attachListeners() {
-  clearListeners();
-  const unsub = onValue(roomRef, snap => {
-    if (!snap.exists()) return;
-    cachedRoom = snap.val();
-    handleRoomUpdate(cachedRoom);
-  });
-  listeners.push(unsub);
-}
 
 function handleRoomUpdate(room) {
   // Online list (lobby)
@@ -1127,31 +1118,8 @@ function rosterToArray(roster) {
 }
 
 // ══════════════════════════════════
-// OVERRIDE handleRoomUpdate to also watch spinTrigger
-// ══════════════════════════════════
-const _origHandle = handleRoomUpdate;
-// Patch in spinTrigger watching
-const origOnValue = onValue;
-// Re-attach with spinTrigger watch
-function attachListeners2() {
-  clearListeners();
-  const unsub = onValue(roomRef, snap => {
-    if (!snap.exists()) return;
-    cachedRoom = snap.val();
-    watchSpinTrigger(cachedRoom);
-    handleRoomUpdate(cachedRoom);
-  });
-  listeners.push(unsub);
-}
-// Override
-window._attachListeners = attachListeners2;
-
-// ══════════════════════════════════
 // INIT
 // ══════════════════════════════════
-joinFromURL();
-
-// Patch attachListeners to use the spin-aware version
 function attachListeners() {
   clearListeners();
   const unsub = onValue(roomRef, snap => {
@@ -1162,6 +1130,8 @@ function attachListeners() {
   });
   listeners.push(unsub);
 }
+
+joinFromURL();
 </script>
 </body>
 </html>
