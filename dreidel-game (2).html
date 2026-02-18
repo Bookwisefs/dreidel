@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dreidel! 🕎</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Frank+Ruhl+Libre:wght@300;400;700;900&family=Crimson+Pro:ital,wght@0,300;0,600;1,300&display=swap');
+
+  :root {
+    --gold: #C9A84C; --gold-light: #F0D080;
+    --blue-deep: #0B1F3A; --blue-mid: #1A3A5C; --blue-bright: #2E6DB4;
+    --cream: #F5EDD6; --red: #C0392B; --silver: #B8C9D9;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--blue-deep);
+    color: var(--cream);
+    font-family: 'Crimson Pro', Georgia, serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    background-image:
+      radial-gradient(ellipse at 20% 50%, rgba(46,109,180,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(201,168,76,0.1) 0%, transparent 50%);
+  }
+
+  body::before {
+    content:''; position:fixed; inset:0; pointer-events:none; z-index:0;
+    background-image:
+      radial-gradient(1px 1px at 10% 15%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 30% 45%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 55% 10%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 75% 60%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 90% 30%, rgba(255,255,255,0.5) 0%, transparent 100%),
+      radial-gradient(1px 1px at 15% 80%, rgba(255,255,255,0.4) 0%, transparent 100%),
+      radial-gradient(1px 1px at 60% 75%, rgba(255,255,255,0.3) 0%, transparent 100%),
+      radial-gradient(1px 1px at 85% 85%, rgba(255,255,255,0.4) 0%, transparent 100%);
+  }
+
+  .container { position:relative; z-index:1; max-width:820px; margin:0 auto; padding:20px; }
+
+  h1 {
+    font-family:'Frank Ruhl Libre',serif; font-size:clamp(2rem,6vw,3.2rem); font-weight:900;
+    text-align:center; color:var(--gold); letter-spacing:0.05em;
+    text-shadow:0 0 40px rgba(201,168,76,0.4),0 2px 4px rgba(0,0,0,0.5); margin-bottom:4px;
+  }
+  .subtitle { text-align:center; color:var(--silver); font-style:italic; font-size:1rem; margin-bottom:24px; letter-spacing:0.08em; }
+
+  .panel {
+    background:rgba(255,255,255,0.04); border:1px solid rgba(201,168,76,0.2);
+    border-radius:12px; padding:20px 22px; backdrop-filter:blur(4px);
+  }
+  .panel h3 { font-family:'Frank Ruhl Libre',serif; font-size:1.1rem; color:var(--gold-light); margin-bottom:12px; }
+
+  label { display:block; font-size:0.88rem; color:var(--silver); margin-bottom:4px; margin-top:10px; }
+
+  input[type="text"], input[type="number"] {
+    width:100%; background:rgba(255,255,255,0.06); border:1px solid rgba(201,168,76,0.3);
+    color:var(--cream); padding:9px 12px; border-radius:8px;
+    font-family:'Crimson Pro',serif; font-size:1rem; outline:none; transition:border-color 0.2s;
+  }
+  input:focus { border-color:var(--gold); }
+
+  .screen { display:none; flex-direction:column; gap:18px; max-width:560px; margin:0 auto; }
+  .screen.active { display:flex; }
+  #screen-game { max-width:820px; }
+
+  /* Buttons */
+  .btn-primary {
+    background:linear-gradient(135deg,var(--gold),#A07830); color:var(--blue-deep);
+    border:none; padding:12px 24px; border-radius:10px; font-family:'Frank Ruhl Libre',serif;
+    font-size:1.1rem; font-weight:700; letter-spacing:0.06em; cursor:pointer; width:100%;
+    transition:all 0.2s; box-shadow:0 4px 20px rgba(201,168,76,0.3);
+  }
+  .btn-primary:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 30px rgba(201,168,76,0.4); }
+  .btn-primary:disabled { opacity:0.4; cursor:not-allowed; }
+
+  .btn-spin {
+    background:linear-gradient(135deg,#2E6DB4,#1A3A5C); color:var(--cream);
+    border:1px solid var(--blue-bright); padding:12px 24px; border-radius:10px;
+    font-family:'Frank Ruhl Libre',serif; font-size:1.1rem; font-weight:700;
+    letter-spacing:0.06em; cursor:pointer; width:100%; transition:all 0.2s;
+    box-shadow:0 4px 20px rgba(46,109,180,0.3); margin-bottom:8px;
+  }
+  .btn-spin:hover:not(:disabled) { transform:translateY(-2px); box-shadow:0 8px 30px rgba(46,109,180,0.5); }
+  .btn-spin:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+
+  .btn-secondary {
+    background:transparent; color:var(--silver); border:1px solid rgba(255,255,255,0.15);
+    padding:9px 20px; border-radius:8px; font-family:'Crimson Pro',serif;
+    font-size:0.95rem; cursor:pointer; transition:all 0.2s; width:100%;
+  }
+  .btn-secondary:hover { border-color:var(--silver); color:var(--cream); }
+
+  .btn-add {
+    background:rgba(201,168,76,0.15); color:var(--gold); border:1px solid rgba(201,168,76,0.4);
+    padding:9px 16px; border-radius:8px; font-family:'Frank Ruhl Libre',serif;
+    font-size:1rem; cursor:pointer; transition:all 0.2s; white-space:nowrap;
+  }
+  .btn-add:hover { background:rgba(201,168,76,0.25); }
+
+  .btn-icon { background:none; border:none; color:var(--red); cursor:pointer; font-size:1rem; padding:2px 6px; border-radius:4px; }
+  .btn-icon:hover { background:rgba(192,57,43,0.15); }
+
+  /* Lobby / join */
+  .room-code-display {
+    background:rgba(201,168,76,0.1); border:2px solid var(--gold);
+    border-radius:12px; padding:16px; text-align:center;
+  }
+  .room-code-label { font-size:0.8rem; color:var(--gold); letter-spacing:0.1em; text-transform:uppercase; margin-bottom:4px; }
+  .room-code-value { font-family:'Frank Ruhl Libre',serif; font-size:2.8rem; font-weight:900; color:var(--gold-light); letter-spacing:0.15em; }
+  .room-link { font-size:0.78rem; color:var(--silver); margin-top:6px; word-break:break-all; }
+
+  .divider { display:flex; align-items:center; gap:12px; color:var(--silver); font-size:0.9rem; }
+  .divider::before, .divider::after { content:''; flex:1; height:1px; background:rgba(255,255,255,0.1); }
+
+  /* Roster & opt-in */
+  .add-row { display:flex; gap:8px; }
+  .add-row input { flex:1; }
+  .roster-list, .opt-in-grid { display:flex; flex-direction:column; gap:6px; margin-top:10px; }
+  .opt-in-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+  .roster-item {
+    display:flex; align-items:center; gap:10px;
+    background:rgba(255,255,255,0.04); border:1px solid rgba(201,168,76,0.15);
+    border-radius:8px; padding:8px 12px;
+  }
+  .roster-item span { flex:1; }
+
+  .opt-in-card {
+    display:flex; align-items:center; gap:8px; padding:10px 12px;
+    border-radius:8px; border:1px solid rgba(201,168,76,0.2);
+    background:rgba(255,255,255,0.03); cursor:pointer; transition:all 0.2s; user-select:none;
+  }
+  .opt-in-card.active { border-color:var(--gold); background:rgba(201,168,76,0.1); }
+  .opt-in-card .chk {
+    width:18px; height:18px; border-radius:50%; border:2px solid rgba(201,168,76,0.4);
+    display:flex; align-items:center; justify-content:center; font-size:0.7rem; flex-shrink:0; transition:all 0.2s;
+  }
+  .opt-in-card.active .chk { background:var(--gold); border-color:var(--gold); color:var(--blue-deep); }
+  .opt-in-name { flex:1; font-size:0.93rem; }
+  .opt-in-bal { font-size:0.78rem; font-family:'Frank Ruhl Libre',serif; }
+
+  /* Players online indicator */
+  .online-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+  .online-pip {
+    background:rgba(39,174,96,0.15); border:1px solid rgba(39,174,96,0.4);
+    border-radius:20px; padding:3px 10px; font-size:0.8rem; color:#90EE90;
+  }
+
+  /* Game screen */
+  .game-header {
+    display:flex; justify-content:space-between; align-items:center;
+    background:rgba(255,255,255,0.03); border:1px solid rgba(201,168,76,0.15);
+    border-radius:10px; padding:10px 16px; font-size:0.88rem; color:var(--silver);
+    flex-wrap:wrap; gap:8px;
+  }
+  .game-header strong { color:var(--gold); font-family:'Frank Ruhl Libre',serif; }
+
+  .pot-display {
+    background:linear-gradient(135deg,rgba(201,168,76,0.15),rgba(201,168,76,0.05));
+    border:1px solid rgba(201,168,76,0.4); border-radius:12px; padding:12px;
+    display:flex; align-items:center; justify-content:center; gap:16px;
+  }
+  .pot-block { text-align:center; }
+  .pot-lbl { font-size:0.72rem; color:var(--gold); letter-spacing:0.1em; text-transform:uppercase; }
+  .pot-val { font-family:'Frank Ruhl Libre',serif; font-size:1.7rem; color:var(--gold-light); font-weight:900; }
+  .pot-div { width:1px; height:38px; background:rgba(201,168,76,0.3); }
+
+  .scoreboard { display:grid; gap:8px; }
+
+  .player-card {
+    background:rgba(255,255,255,0.04); border:1px solid rgba(201,168,76,0.15);
+    border-radius:10px; padding:10px 14px; display:flex; align-items:center; gap:12px; transition:all 0.35s;
+  }
+  .player-card.winner-flash { border-color:var(--gold); background:rgba(201,168,76,0.12); box-shadow:0 0 20px rgba(201,168,76,0.3); }
+
+  .d-icon { font-size:1.7rem; min-width:34px; text-align:center; display:inline-block; }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+  .spinning .d-icon { animation:spin 0.25s linear infinite; }
+
+  .p-info { flex:1; min-width:0; }
+  .p-name { font-family:'Frank Ruhl Libre',serif; font-size:1rem; font-weight:700; }
+  .p-result { font-size:0.8rem; color:var(--silver); font-style:italic; min-height:15px; }
+  .p-result.gimmel { color:#FFD700; font-weight:600; font-style:normal; }
+  .p-result.hey    { color:#90EE90; font-style:normal; }
+  .p-result.nun    { color:var(--silver); }
+  .p-result.shin   { color:var(--red); font-style:normal; }
+
+  .p-scores { text-align:right; min-width:90px; }
+  .p-wins { font-family:'Frank Ruhl Libre',serif; font-size:1.15rem; color:var(--gold); }
+  .p-net { font-size:0.75rem; font-family:'Frank Ruhl Libre',serif; }
+  .pos { color:#90EE90; } .neg { color:var(--red); } .zero { color:var(--silver); }
+
+  .prog-wrap { background:rgba(255,255,255,0.05); border-radius:20px; height:4px; margin-top:4px; }
+  .prog-bar { height:100%; background:linear-gradient(90deg,var(--gold),var(--gold-light)); border-radius:20px; transition:width 0.5s ease; }
+
+  .status-msg { text-align:center; font-style:italic; color:var(--gold-light); font-size:1rem; min-height:22px; }
+  .tie-notice {
+    text-align:center; background:rgba(201,168,76,0.1); border:1px solid rgba(201,168,76,0.3);
+    border-radius:8px; padding:7px; font-style:italic; color:var(--gold-light); font-size:0.88rem; display:none;
+  }
+
+  /* Ledger table */
+  .ledger-table { width:100%; border-collapse:collapse; font-size:0.82rem; }
+  .ledger-table th {
+    color:var(--gold); font-family:'Frank Ruhl Libre',serif; font-size:0.75rem;
+    letter-spacing:0.05em; text-transform:uppercase; padding:5px 7px; text-align:left;
+    border-bottom:1px solid rgba(201,168,76,0.2);
+  }
+  .ledger-table th:not(:first-child) { text-align:right; }
+  .ledger-table td { padding:5px 7px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .ledger-table td:not(:first-child) { text-align:right; font-family:'Frank Ruhl Libre',serif; }
+  .ledger-table tr:last-child td { border-bottom:none; }
+
+  /* Overlay */
+  .overlay {
+    display:none; position:fixed; inset:0; background:rgba(11,31,58,0.9);
+    z-index:100; justify-content:center; align-items:center; backdrop-filter:blur(8px);
+  }
+  .overlay.show { display:flex; }
+  .overlay-box {
+    background:linear-gradient(135deg,rgba(201,168,76,0.12),rgba(46,109,180,0.08));
+    border:2px solid var(--gold); border-radius:18px; padding:32px 36px;
+    max-width:480px; width:90%; box-shadow:0 0 60px rgba(201,168,76,0.25);
+    animation:pop 0.4s cubic-bezier(0.34,1.56,0.64,1); text-align:center;
+  }
+  @keyframes pop { from{transform:scale(0.6);opacity:0} to{transform:scale(1);opacity:1} }
+  .ov-emoji { font-size:2.8rem; margin-bottom:8px; }
+  .ov-title { font-family:'Frank Ruhl Libre',serif; font-size:1.9rem; color:var(--gold); margin-bottom:6px; }
+  .ov-name  { font-family:'Frank Ruhl Libre',serif; font-size:1.5rem; color:var(--cream); margin-bottom:4px; }
+  .ov-detail { color:var(--silver); font-style:italic; font-size:0.92rem; margin-bottom:18px; }
+  .ov-actions { display:flex; flex-direction:column; gap:10px; }
+
+  /* Hebrew legend */
+  .heb-legend { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+  .hl { text-align:center; background:rgba(255,255,255,0.04); border:1px solid rgba(201,168,76,0.15); border-radius:8px; padding:6px 10px; min-width:62px; }
+  .hl-h { font-size:1.4rem; display:block; }
+  .hl-n { font-size:0.68rem; color:var(--gold); letter-spacing:0.05em; text-transform:uppercase; display:block; }
+  .hl-r { font-size:0.65rem; color:var(--silver); font-style:italic; }
+
+  /* Spinner loader */
+  .loader { text-align:center; padding:30px; color:var(--silver); font-style:italic; }
+
+  /* Who's online badge */
+  .host-badge { background:rgba(201,168,76,0.2); border:1px solid rgba(201,168,76,0.4); border-radius:20px; padding:2px 10px; font-size:0.75rem; color:var(--gold); margin-left:6px; }
+
+  .section-gap { display:flex; flex-direction:column; gap:14px; }
+
+  .info-note { font-size:0.82rem; color:var(--silver); font-style:italic; text-align:center; }
+
+  .copy-btn {
+    background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:var(--silver);
+    padding:5px 12px; border-radius:6px; font-size:0.78rem; cursor:pointer; margin-top:6px; transition:all 0.2s;
+  }
+  .copy-btn:hover { border-color:var(--gold); color:var(--gold); }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>🕎 Dreidel!</h1>
+  <p class="subtitle">Chanukah's finest game of chance</p>
+
+  <!-- SCREEN: ENTRY (create or join) -->
+  <div id="screen-entry" class="screen active">
+    <div class="heb-legend">
+      <div class="hl"><span class="hl-h">ג</span><span class="hl-n">Gimmel</span><span class="hl-r">Best</span></div>
+      <div class="hl"><span class="hl-h">ה</span><span class="hl-n">Hey</span><span class="hl-r">2nd</span></div>
+      <div class="hl"><span class="hl-h">נ</span><span class="hl-n">Nun</span><span class="hl-r">3rd</span></div>
+      <div class="hl"><span class="hl-h">ש</span><span class="hl-n">Shin</span><span class="hl-r">Lowest</span></div>
+    </div>
+
+    <div class="panel">
+      <h3>👤 Your Name</h3>
+      <input type="text" id="my-name" placeholder="Enter your name to play">
+    </div>
+
+    <div class="section-gap">
+      <button class="btn-primary" onclick="createRoom()">✨ Create New Game Room</button>
+
+      <div class="divider">or join existing</div>
+
+      <div class="panel">
+        <h3>🔑 Join a Room</h3>
+        <label>Room Code</label>
+        <input type="text" id="join-code" placeholder="e.g. XKCD" maxlength="6" style="text-transform:uppercase;letter-spacing:0.15em;font-size:1.3rem;text-align:center">
+        <button class="btn-primary" style="margin-top:12px" onclick="joinRoom()">→ Join Room</button>
+      </div>
+    </div>
+
+    <div id="entry-error" style="color:var(--red);text-align:center;font-style:italic;min-height:20px;"></div>
+  </div>
+
+  <!-- SCREEN: LOBBY (waiting for players, host sets up roster) -->
+  <div id="screen-lobby" class="screen">
+    <div class="room-code-display">
+      <div class="room-code-label">🔗 Room Code — share with friends!</div>
+      <div class="room-code-value" id="display-room-code">----</div>
+      <div class="room-link" id="display-room-link"></div>
+      <button class="copy-btn" onclick="copyLink()">📋 Copy shareable link</button>
+    </div>
+
+    <div class="panel">
+      <h3>🌐 Players Online</h3>
+      <div class="online-list" id="online-list"><div class="loader">Waiting for players...</div></div>
+    </div>
+
+    <div class="panel" id="roster-panel">
+      <h3>📋 Game Roster <span style="font-size:0.8rem;color:var(--silver);font-weight:400">(host manages)</span></h3>
+      <div class="add-row">
+        <input type="text" id="new-player-name" placeholder="Add player name" onkeydown="if(event.key==='Enter') addToRoster()">
+        <button class="btn-add" onclick="addToRoster()">+ Add</button>
+      </div>
+      <div class="roster-list" id="roster-list"></div>
+      <p class="info-note" style="margin-top:10px;">Players joining the link are added automatically.</p>
+    </div>
+
+    <button class="btn-primary" id="btn-start-setup" onclick="goToRoundSetup()" disabled>
+      🎮 Set Up Round 1 →
+    </button>
+  </div>
+
+  <!-- SCREEN: ROUND SETUP -->
+  <div id="screen-round-setup" class="screen">
+    <div class="panel">
+      <h3 id="round-setup-title">⚙️ Round 1 Setup</h3>
+      <label>Who's in this round?</label>
+      <div class="opt-in-grid" id="opt-in-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h3>💰 Stakes & Spins</h3>
+      <label>Stake per player ($)</label>
+      <input type="number" id="round-stake" value="5" min="1">
+      <label>Best of how many spins?</label>
+      <input type="number" id="round-spins" value="5" min="1">
+    </div>
+
+    <div id="ledger-section" style="display:none;">
+      <div style="font-family:'Frank Ruhl Libre',serif;font-size:1.05rem;color:var(--gold-light);margin-bottom:8px;">📊 Running Ledger</div>
+      <div class="panel" style="padding:12px 6px;overflow-x:auto;">
+        <table class="ledger-table" id="ledger-table"></table>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btn-launch-round" onclick="launchRound()">🎲 Start Round!</button>
+    <div class="info-note" id="host-only-note" style="display:none;">Only the host can start the round.</div>
+  </div>
+
+  <!-- SCREEN: GAME -->
+  <div id="screen-game" class="screen" style="max-width:820px;">
+    <div class="game-header">
+      <span><strong id="gh-round">Round 1</strong></span>
+      <span id="gh-spins">Spin 1</span>
+      <span id="gh-pot">$5/player · Pot: $0</span>
+    </div>
+
+    <div class="pot-display">
+      <div class="pot-block">
+        <div class="pot-lbl">🪙 Pot</div>
+        <div class="pot-val" id="pot-amount">$0</div>
+      </div>
+      <div class="pot-div"></div>
+      <div class="pot-block">
+        <div class="pot-lbl">Spin wins needed</div>
+        <div class="pot-val" id="wins-needed">3</div>
+      </div>
+      <div class="pot-div"></div>
+      <div class="pot-block">
+        <div class="pot-lbl">Spins so far</div>
+        <div class="pot-val" id="spin-count-display">0</div>
+      </div>
+    </div>
+
+    <div class="status-msg" id="status-msg">Waiting to spin...</div>
+    <div class="tie-notice" id="tie-notice"></div>
+
+    <div class="scoreboard" id="scoreboard"></div>
+
+    <button class="btn-spin" id="spin-btn" onclick="triggerSpin()" disabled>🌀 SPIN ALL DREIDELS!</button>
+    <button class="btn-secondary" id="abort-btn" onclick="confirmAbort()" style="display:none;">✖ Abort Round (no money changes)</button>
+  </div>
+</div>
+
+<!-- ROUND WINNER OVERLAY -->
+<div class="overlay" id="ov-round-winner">
+  <div class="overlay-box">
+    <div class="ov-emoji">🏆</div>
+    <div class="ov-title">Round Winner!</div>
+    <div class="ov-name" id="ow-name"></div>
+    <div class="ov-detail" id="ow-detail"></div>
+    <div class="ov-actions">
+      <button class="btn-primary" id="btn-next-round" onclick="goToNextRound()">▶ Play Another Round →</button>
+      <button class="btn-secondary" id="btn-end-session" onclick="endSession()">🏁 End Session & See Totals</button>
+      <div class="info-note" id="host-round-note" style="display:none;">Only the host can advance.</div>
+    </div>
+  </div>
+</div>
+
+<!-- SESSION END OVERLAY -->
+<div class="overlay" id="ov-session-end">
+  <div class="overlay-box" style="max-width:520px;">
+    <div class="ov-emoji">🎊</div>
+    <div class="ov-title" style="margin-bottom:14px;">Session Over!</div>
+    <div id="final-ledger-wrap" style="margin-bottom:18px;text-align:left;overflow-x:auto;"></div>
+    <button class="btn-primary" onclick="fullReset()">🔄 Start New Session</button>
+  </div>
+</div>
+
+<!-- Firebase -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, update, onValue, push, remove, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBBSscmGkzsEWK4uw7QyLi5VNiv4Vfsm2M",
+  authDomain: "dreidel-8d1cd.firebaseapp.com",
+  databaseURL: "https://dreidel-8d1cd-default-rtdb.firebaseio.com",
+  projectId: "dreidel-8d1cd",
+  storageBucket: "dreidel-8d1cd.firebasestorage.app",
+  messagingSenderId: "1052615896794",
+  appId: "1:1052615896794:web:e32328d062ec98c3cdbfe3"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ══════════════════════════════════
+// LOCAL STATE
+// ══════════════════════════════════
+let roomCode   = null;
+let myName     = null;
+let amHost     = false;
+let roomRef    = null;
+let listeners  = [];   // cleanup refs
+
+const DREIDEL = [
+  { name:'Gimmel', heb:'ג', val:4, cls:'gimmel' },
+  { name:'Hey',    heb:'ה', val:3, cls:'hey'    },
+  { name:'Nun',    heb:'נ', val:2, cls:'nun'    },
+  { name:'Shin',   heb:'ש', val:1, cls:'shin'   }
+];
+const SPIN_EMOJIS = ['🕎','✡️','⭐','🌟','💫'];
+
+// Cached room snapshot for non-host rendering
+let cachedRoom = null;
+let animating  = false;
+
+// ══════════════════════════════════
+// UTILS
+// ══════════════════════════════════
+function show(id)  { document.getElementById(id).classList.add('active'); }
+function hide(id)  { document.getElementById(id).classList.remove('active'); }
+function $        (id) { return document.getElementById(id); }
+
+function genCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:4}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+function fmtNet(n) {
+  if (n === 0) return '±$0';
+  return n > 0 ? `+$${n}` : `-$${Math.abs(n)}`;
+}
+function netCls(n) { return n > 0 ? 'pos' : n < 0 ? 'neg' : 'zero'; }
+
+function clearListeners() {
+  listeners.forEach(u => u());
+  listeners = [];
+}
+
+// ══════════════════════════════════
+// ENTRY
+// ══════════════════════════════════
+window.createRoom = async function() {
+  const name = $('my-name').value.trim();
+  if (!name) { $('entry-error').textContent = 'Please enter your name first.'; return; }
+  myName = name;
+  amHost = true;
+  roomCode = genCode();
+  roomRef  = ref(db, `rooms/${roomCode}`);
+
+  await set(roomRef, {
+    host: myName,
+    phase: 'lobby',   // lobby | round-setup | playing | round-end | session-end
+    roundNum: 0,
+    roster: {},
+    history: [],
+    online: {},
+    round: null
+  });
+
+  await joinOnline();
+  await addToRosterByName(myName);
+  attachListeners();
+  showLobby();
+};
+
+window.joinRoom = async function() {
+  const name = $('my-name').value.trim();
+  const code = $('join-code').value.trim().toUpperCase();
+  if (!name) { $('entry-error').textContent = 'Please enter your name first.'; return; }
+  if (!code)  { $('entry-error').textContent = 'Please enter a room code.'; return; }
+
+  const snap = await get(ref(db, `rooms/${code}`));
+  if (!snap.exists()) { $('entry-error').textContent = 'Room not found. Check the code and try again.'; return; }
+
+  myName   = name;
+  roomCode = code;
+  amHost   = false;
+  roomRef  = ref(db, `rooms/${roomCode}`);
+
+  await joinOnline();
+  await addToRosterByName(myName);
+  attachListeners();
+  // Phase will be picked up by listener
+};
+
+async function joinFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  const code   = params.get('room');
+  if (!code) return;
+  $('join-code').value = code.toUpperCase();
+}
+
+async function joinOnline() {
+  const meRef = ref(db, `rooms/${roomCode}/online/${myName}`);
+  await set(meRef, { joinedAt: serverTimestamp() });
+  // Remove on disconnect
+  import("https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js").then(({ onDisconnect }) => {
+    onDisconnect(meRef).remove();
+  });
+}
+
+async function addToRosterByName(name) {
+  const key = name.replace(/[.#$[\]]/g, '_');
+  const rRef = ref(db, `rooms/${roomCode}/roster/${key}`);
+  const snap = await get(rRef);
+  if (!snap.exists()) {
+    await set(rRef, { name, totalNet: 0 });
+  }
+}
+
+// ══════════════════════════════════
+// LISTENERS
+// ══════════════════════════════════
+function attachListeners() {
+  clearListeners();
+  const unsub = onValue(roomRef, snap => {
+    if (!snap.exists()) return;
+    cachedRoom = snap.val();
+    handleRoomUpdate(cachedRoom);
+  });
+  listeners.push(unsub);
+}
+
+function handleRoomUpdate(room) {
+  // Online list (lobby)
+  renderOnlineList(room.online || {});
+
+  // Roster button enable
+  const rosterArr = rosterToArray(room.roster || {});
+  $('btn-start-setup').disabled = rosterArr.length < 2 || !amHost;
+
+  // Phase routing
+  const phase = room.phase;
+
+  if (phase === 'lobby') {
+    showLobby();
+    renderRosterList(room.roster || {});
+
+  } else if (phase === 'round-setup') {
+    showRoundSetup(room);
+
+  } else if (phase === 'playing') {
+    showGameScreen(room);
+    if (!animating) syncGameState(room);
+
+  } else if (phase === 'round-end') {
+    showRoundEnd(room);
+
+  } else if (phase === 'session-end') {
+    showSessionEnd(room);
+  }
+}
+
+// ══════════════════════════════════
+// LOBBY
+// ══════════════════════════════════
+function showLobby() {
+  ['screen-entry','screen-round-setup','screen-game'].forEach(hide);
+  show('screen-lobby');
+  $('display-room-code').textContent = roomCode;
+  const link = `${location.origin}${location.pathname}?room=${roomCode}`;
+  $('display-room-link').textContent = link;
+  $('roster-panel').style.display = amHost ? 'block' : 'none';
+}
+
+window.copyLink = function() {
+  const link = `${location.origin}${location.pathname}?room=${roomCode}`;
+  navigator.clipboard.writeText(link).then(() => {
+    const btn = document.querySelector('.copy-btn');
+    btn.textContent = '✅ Copied!';
+    setTimeout(() => btn.textContent = '📋 Copy shareable link', 2000);
+  });
+};
+
+function renderOnlineList(online) {
+  const el = $('online-list');
+  const names = Object.values(online).map ? Object.keys(online) : [];
+  if (!names.length) { el.innerHTML = '<div class="loader">Waiting...</div>'; return; }
+  el.innerHTML = names.map(n => `<div class="online-pip">🟢 ${n}${n === cachedRoom?.host ? ' <span class="host-badge">host</span>' : ''}</div>`).join('');
+}
+
+function renderRosterList(roster) {
+  const arr = rosterToArray(roster);
+  $('roster-list').innerHTML = arr.map((p,i) => `
+    <div class="roster-item">
+      <span>🎭 ${p.name}</span>
+      ${amHost ? `<button class="btn-icon" onclick="removeFromRoster('${escKey(p.name)}')">✕</button>` : ''}
+    </div>
+  `).join('') || '<div style="color:var(--silver);font-style:italic;font-size:0.88rem;margin-top:6px;">No players yet.</div>';
+}
+
+window.addToRoster = async function() {
+  if (!amHost) return;
+  const inp  = $('new-player-name');
+  const name = inp.value.trim();
+  if (!name) return;
+  const key = escKey(name);
+  const snap = await get(ref(db, `rooms/${roomCode}/roster/${key}`));
+  if (!snap.exists()) {
+    await set(ref(db, `rooms/${roomCode}/roster/${key}`), { name, totalNet: 0 });
+  }
+  inp.value = '';
+  inp.focus();
+};
+
+window.removeFromRoster = async function(key) {
+  if (!amHost) return;
+  await remove(ref(db, `rooms/${roomCode}/roster/${key}`));
+};
+
+function escKey(name) { return name.replace(/[.#$[\]/]/g, '_'); }
+
+// ══════════════════════════════════
+// ROUND SETUP
+// ══════════════════════════════════
+window.goToRoundSetup = async function() {
+  if (!amHost) return;
+  await update(roomRef, { phase: 'round-setup' });
+};
+
+function showRoundSetup(room) {
+  ['screen-entry','screen-lobby','screen-game'].forEach(hide);
+  show('screen-round-setup');
+
+  const rNum = (room.roundNum || 0) + 1;
+  $('round-setup-title').textContent = `⚙️ Round ${rNum} Setup`;
+
+  // Opt-in grid
+  const roster = rosterToArray(room.roster || {});
+  const prevOptIn = room.round?.optIn || {};
+  $('opt-in-grid').innerHTML = roster.map(p => {
+    const key = escKey(p.name);
+    // Default: all in (or keep previous opt-in state if re-entering setup)
+    const active = prevOptIn[key] !== false;
+    const net = p.totalNet || 0;
+    return `
+      <div class="opt-in-card ${active ? 'active' : ''}" id="oic-${key}" onclick="${amHost ? `toggleOptIn('${key}')` : ''}">
+        <div class="chk">${active ? '✓' : ''}</div>
+        <div class="opt-in-name">${p.name}</div>
+        <div class="opt-in-bal ${netCls(net)}">${fmtNet(net)}</div>
+      </div>
+    `;
+  }).join('');
+
+  // Stakes inputs - host can edit
+  $('round-stake').disabled = !amHost;
+  $('round-spins').disabled = !amHost;
+  if (room.round?.stake) $('round-stake').value = room.round.stake;
+  if (room.round?.totalSpins) $('round-spins').value = room.round.totalSpins;
+
+  $('btn-launch-round').style.display = amHost ? 'block' : 'none';
+  $('host-only-note').style.display   = amHost ? 'none' : 'block';
+
+  // Ledger
+  const history = room.history || [];
+  if (history.length > 0) {
+    $('ledger-section').style.display = 'block';
+    renderLedger(room);
+  } else {
+    $('ledger-section').style.display = 'none';
+  }
+}
+
+window.toggleOptIn = function(key) {
+  if (!amHost) return;
+  const card = $(`oic-${key}`);
+  const nowOn = card.classList.toggle('active');
+  card.querySelector('.chk').textContent = nowOn ? '✓' : '';
+};
+
+window.launchRound = async function() {
+  if (!amHost) return;
+  const room   = cachedRoom;
+  const roster = rosterToArray(room.roster || {});
+
+  // Collect opt-ins from DOM
+  const optIn = {};
+  roster.forEach(p => {
+    const key = escKey(p.name);
+    optIn[key] = $(`oic-${key}`)?.classList.contains('active') ?? true;
+  });
+
+  const activePlayers = roster.filter(p => optIn[escKey(p.name)]);
+  if (activePlayers.length < 2) { alert('Need at least 2 players opted in!'); return; }
+
+  const stake      = parseFloat($('round-stake').value) || 5;
+  const totalSpins = parseInt($('round-spins').value)   || 5;
+  const winsNeeded = Math.ceil(totalSpins / 2);
+  const newRoundNum = (room.roundNum || 0) + 1;
+
+  const spinWins = {};
+  activePlayers.forEach(p => { spinWins[escKey(p.name)] = 0; });
+
+  await update(roomRef, {
+    phase: 'playing',
+    roundNum: newRoundNum,
+    round: {
+      stake, totalSpins, winsNeeded,
+      spinCount: 0,
+      spinWins,
+      optIn,
+      activePlayers: activePlayers.map(p => p.name),
+      tieBreakers: null,
+      lastSpin: null,
+      winner: null
+    }
+  });
+};
+
+// ══════════════════════════════════
+// GAME SCREEN
+// ══════════════════════════════════
+function showGameScreen(room) {
+  ['screen-entry','screen-lobby','screen-round-setup'].forEach(hide);
+  show('screen-game');
+
+  const r = room.round;
+  if (!r) return;
+
+  $('gh-round').textContent = `Round ${room.roundNum}`;
+  $('gh-pot').textContent   = `$${r.stake}/player · Pot: $${r.activePlayers.length * r.stake}`;
+  $('pot-amount').textContent = `$${r.activePlayers.length * r.stake}`;
+  $('wins-needed').textContent = r.winsNeeded;
+  $('spin-count-display').textContent = r.spinCount || 0;
+
+  $('spin-btn').disabled = !amHost || animating;
+  $('abort-btn').style.display = amHost ? 'block' : 'none';
+
+  renderGameScoreboard(room);
+}
+
+function renderGameScoreboard(room) {
+  const r      = room.round;
+  const roster = rosterToArray(room.roster || {});
+  const active = r.activePlayers || [];
+  const sb     = $('scoreboard');
+
+  sb.style.gridTemplateColumns = active.length > 3 ? '1fr 1fr' : '1fr';
+  sb.innerHTML = active.map(name => {
+    const rp  = roster.find(p => p.name === name) || { name, totalNet: 0 };
+    const net = rp.totalNet || 0;
+    const key = escKey(name);
+    const w   = r.spinWins?.[key] || 0;
+    return `
+      <div class="player-card" id="pc-${key}">
+        <span class="d-icon" id="di-${key}">🕎</span>
+        <div class="p-info">
+          <div class="p-name">${name}</div>
+          <div class="p-result" id="pr-${key}">Ready...</div>
+          <div class="prog-wrap"><div class="prog-bar" id="pb-${key}" style="width:${Math.min((w/r.winsNeeded)*100,100)}%"></div></div>
+        </div>
+        <div class="p-scores">
+          <div class="p-wins" id="rw-${key}">${w} <span style="font-size:0.62rem;color:var(--silver);">wins</span></div>
+          <div class="p-net ${netCls(net)}" id="tb-${key}">${fmtNet(net)} total</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function syncGameState(room) {
+  // Sync latest spin results to UI without re-animating
+  const r = room.round;
+  if (!r) return;
+
+  $('spin-count-display').textContent = r.spinCount || 0;
+  $('gh-spins').textContent = `Spin ${(r.spinCount || 0) + 1}`;
+
+  const active = r.activePlayers || [];
+  active.forEach(name => {
+    const key = escKey(name);
+    const w   = r.spinWins?.[key] || 0;
+    const rwEl = $(`rw-${key}`);
+    const pbEl = $(`pb-${key}`);
+    if (rwEl) rwEl.innerHTML = `${w} <span style="font-size:0.62rem;color:var(--silver);">wins</span>`;
+    if (pbEl) pbEl.style.width = Math.min((w / r.winsNeeded) * 100, 100) + '%';
+
+    // Show last result if exists
+    const lastSpin = r.lastSpin;
+    if (lastSpin && lastSpin[key]) {
+      const el = $(`pr-${key}`);
+      if (el) { el.textContent = lastSpin[key].name + '!'; el.className = `p-result ${lastSpin[key].cls}`; }
+    }
+  });
+
+  if (r.statusMsg) $('status-msg').textContent = r.statusMsg;
+
+  // Tie notice
+  if (r.tieBreakers && r.tieBreakers.length > 1) {
+    const names = r.tieBreakers.join(' & ');
+    $('tie-notice').style.display = 'block';
+    $('tie-notice').textContent = `🔄 Tie! ${names} — spin again!`;
+    active.forEach(name => {
+      const card = $(`pc-${escKey(name)}`);
+      if (card) card.style.opacity = r.tieBreakers.includes(name) ? '1' : '0.3';
+    });
+  } else {
+    $('tie-notice').style.display = 'none';
+    active.forEach(name => {
+      const card = $(`pc-${escKey(name)}`);
+      if (card) card.style.opacity = '1';
+    });
+  }
+}
+
+// ══════════════════════════════════
+// SPIN — host only triggers, DB drives animation for all
+// ══════════════════════════════════
+window.triggerSpin = async function() {
+  if (!amHost || animating) return;
+  const room = cachedRoom;
+  const r    = room.round;
+
+  // Determine who spins (tiebreakers or all)
+  const spinners = r.tieBreakers?.length > 1 ? r.tieBreakers : r.activePlayers;
+
+  // Roll dice
+  const results = {};
+  spinners.forEach(name => {
+    const rolled = DREIDEL[Math.floor(Math.random() * DREIDEL.length)];
+    results[escKey(name)] = { name: rolled.name, heb: rolled.heb, val: rolled.val, cls: rolled.cls };
+  });
+
+  // Write spin trigger to DB — all clients will animate from this
+  await update(ref(db, `rooms/${roomCode}/round`), {
+    spinTrigger: {
+      spinners,
+      results,
+      timestamp: Date.now()
+    }
+  });
+};
+
+// Watch for spinTrigger and animate locally
+let lastSpinTimestamp = 0;
+function watchSpinTrigger(room) {
+  const trigger = room.round?.spinTrigger;
+  if (!trigger || trigger.timestamp === lastSpinTimestamp) return;
+  lastSpinTimestamp = trigger.timestamp;
+  animateSpin(trigger.spinners, trigger.results, room);
+}
+
+async function animateSpin(spinners, results, room) {
+  if (animating) return;
+  animating = true;
+  $('spin-btn').disabled = true;
+
+  const r = room.round;
+
+  // Dim non-spinners
+  r.activePlayers.forEach(name => {
+    const card = $(`pc-${escKey(name)}`);
+    if (card) card.style.opacity = spinners.includes(name) ? '1' : '0.3';
+  });
+
+  // Start spin animation
+  spinners.forEach(name => {
+    const key  = escKey(name);
+    const card = $(`pc-${key}`);
+    const prEl = $(`pr-${key}`);
+    if (card) card.classList.add('spinning');
+    if (prEl) { prEl.textContent = '...spinning...'; prEl.className = 'p-result'; }
+  });
+
+  const spinDur = 1200 + Math.random() * 600;
+  const interval = setInterval(() => {
+    spinners.forEach(name => {
+      const el = $(`di-${escKey(name)}`);
+      if (el) el.textContent = SPIN_EMOJIS[Math.floor(Math.random() * SPIN_EMOJIS.length)];
+    });
+  }, 75);
+
+  await delay(spinDur);
+  clearInterval(interval);
+
+  // Land on results
+  spinners.forEach(name => {
+    const key  = escKey(name);
+    const card = $(`pc-${key}`);
+    const diEl = $(`di-${key}`);
+    const prEl = $(`pr-${key}`);
+    const res  = results[key];
+    if (card) card.classList.remove('spinning');
+    if (diEl && res) diEl.textContent = res.heb;
+    if (prEl && res) { prEl.textContent = res.name + '!'; prEl.className = `p-result ${res.cls}`; }
+  });
+
+  await delay(500);
+
+  // If host: compute outcome and write back to DB
+  if (amHost) {
+    await resolveSpinOutcome(spinners, results, room);
+  }
+
+  animating = false;
+  $('spin-btn').disabled = !amHost;
+}
+
+async function resolveSpinOutcome(spinners, results, room) {
+  const r = room.round;
+  const maxVal = Math.max(...spinners.map(n => results[escKey(n)].val));
+  const winners = spinners.filter(n => results[escKey(n)].val === maxVal);
+
+  if (winners.length > 1) {
+    // TIE
+    const tRes = DREIDEL.find(d => d.val === maxVal);
+    const msg  = `🔄 Tie! ${winners.join(' & ')} both rolled ${tRes.name} — spin again!`;
+    await update(ref(db, `rooms/${roomCode}/round`), {
+      tieBreakers: winners,
+      lastSpin: results,
+      statusMsg: 'Tiebreaker!'
+    });
+    return;
+  }
+
+  // Single winner
+  const winnerName = winners[0];
+  const winnerKey  = escKey(winnerName);
+  const newWins    = (r.spinWins?.[winnerKey] || 0) + 1;
+  const newCount   = (r.spinCount || 0) + 1;
+
+  const updatedSpinWins = { ...(r.spinWins || {}), [winnerKey]: newWins };
+  const msg = `🎯 ${winnerName} wins that spin! (${newWins}/${r.winsNeeded} needed)`;
+
+  const updates = {
+    'round/tieBreakers': null,
+    'round/spinCount':   newCount,
+    'round/spinWins':    updatedSpinWins,
+    'round/lastSpin':    results,
+    'round/statusMsg':   msg
+  };
+
+  // Check round win
+  if (newWins >= r.winsNeeded) {
+    // Award money
+    const pot      = r.activePlayers.length * r.stake;
+    const rosterUp = {};
+    const roster   = rosterToArray(room.roster || {});
+
+    roster.forEach(p => {
+      if (!r.activePlayers.includes(p.name)) return;
+      const pk  = escKey(p.name);
+      const cur = p.totalNet || 0;
+      rosterUp[`roster/${pk}/totalNet`] = p.name === winnerName
+        ? cur + pot - r.stake
+        : cur - r.stake;
+    });
+
+    const histEntry = {
+      roundNum:    room.roundNum + 1,
+      winner:      winnerName,
+      players:     r.activePlayers,
+      stake:       r.stake,
+      pot,
+      spins:       newCount
+    };
+
+    const oldHistory = room.history || [];
+    updates['round/winner']   = winnerName;
+    updates['round/statusMsg'] = `🏆 ${winnerName} wins the round!`;
+
+    await update(roomRef, {
+      ...updates,
+      ...rosterUp,
+      history: [...oldHistory, histEntry],
+      phase: 'round-end'
+    });
+  } else {
+    await update(roomRef, updates);
+  }
+}
+
+// ══════════════════════════════════
+// ROUND END
+// ══════════════════════════════════
+function showRoundEnd(room) {
+  const r       = room.round;
+  const winner  = r?.winner;
+  const pot     = r ? r.activePlayers.length * r.stake : 0;
+  const netGain = r ? (r.activePlayers.length - 1) * r.stake : 0;
+
+  $('ow-name').textContent   = `🎉 ${winner}`;
+  $('ow-detail').textContent = `Collects the $${pot} pot (+$${netGain} net) after ${r?.spinCount || 0} spin${r?.spinCount !== 1 ? 's' : ''}`;
+
+  $('btn-next-round').style.display  = amHost ? 'block' : 'none';
+  $('btn-end-session').style.display = amHost ? 'block' : 'none';
+  $('host-round-note').style.display = amHost ? 'none'  : 'block';
+
+  document.getElementById('ov-round-winner').classList.add('show');
+}
+
+window.goToNextRound = async function() {
+  if (!amHost) return;
+  document.getElementById('ov-round-winner').classList.remove('show');
+  await update(roomRef, { phase: 'round-setup' });
+};
+
+window.endSession = async function() {
+  if (!amHost) return;
+  document.getElementById('ov-round-winner').classList.remove('show');
+  await update(roomRef, { phase: 'session-end' });
+};
+
+window.confirmAbort = async function() {
+  if (!amHost) return;
+  if (confirm('Abort this round? No money changes hands.')) {
+    await update(roomRef, { phase: 'round-setup' });
+  }
+};
+
+// ══════════════════════════════════
+// SESSION END
+// ══════════════════════════════════
+function showSessionEnd(room) {
+  ['screen-entry','screen-lobby','screen-round-setup','screen-game'].forEach(hide);
+  document.getElementById('ov-round-winner').classList.remove('show');
+  document.getElementById('ov-session-end').classList.add('show');
+
+  const roster  = rosterToArray(room.roster || {}).sort((a,b) => b.totalNet - a.totalNet);
+  const history = room.history || [];
+  const medals  = ['🥇','🥈','🥉'];
+
+  let html = `<table class="ledger-table" style="width:100%">
+    <thead><tr><th>Player</th><th style="text-align:right">Rounds Won</th><th style="text-align:right">Net $</th></tr></thead><tbody>`;
+  roster.forEach((p, i) => {
+    const rWins = history.filter(h => h.winner === p.name).length;
+    const net   = p.totalNet || 0;
+    html += `<tr>
+      <td>${medals[i] || '  '} ${p.name}</td>
+      <td style="text-align:right">${rWins}</td>
+      <td class="${netCls(net)}" style="text-align:right"><strong>${fmtNet(net)}</strong></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  $('final-ledger-wrap').innerHTML = html;
+}
+
+window.fullReset = async function() {
+  if (!amHost) return;
+  document.getElementById('ov-session-end').classList.remove('show');
+  // Reset room to lobby
+  const roster = cachedRoom?.roster || {};
+  // Zero out totals
+  const cleanRoster = {};
+  Object.keys(roster).forEach(k => {
+    cleanRoster[k] = { name: roster[k].name, totalNet: 0 };
+  });
+  await update(roomRef, {
+    phase: 'lobby',
+    roundNum: 0,
+    history: [],
+    roster: cleanRoster,
+    round: null
+  });
+};
+
+// ══════════════════════════════════
+// LEDGER
+// ══════════════════════════════════
+function renderLedger(room) {
+  const tbl     = $('ledger-table');
+  const history = room.history || [];
+  const roster  = rosterToArray(room.roster || {});
+
+  const roundCols = history.map(h =>
+    `<th>R${h.roundNum}<br><span style="font-weight:400;font-size:0.68rem;color:var(--silver);">$${h.stake}</span></th>`
+  ).join('');
+
+  let html = `<thead><tr><th>Player</th>${roundCols}<th>Total</th></tr></thead><tbody>`;
+  roster.forEach(p => {
+    const cells = history.map(h => {
+      if (!h.players.includes(p.name)) return `<td style="color:rgba(255,255,255,0.18)">—</td>`;
+      const isWin = h.winner === p.name;
+      const net   = isWin ? (h.players.length - 1) * h.stake : -h.stake;
+      return `<td class="${netCls(net)}">${fmtNet(net)}</td>`;
+    }).join('');
+    const net = p.totalNet || 0;
+    html += `<tr><td>${p.name}</td>${cells}<td class="${netCls(net)}"><strong>${fmtNet(net)}</strong></td></tr>`;
+  });
+  html += '</tbody></table>';
+  tbl.innerHTML = html;
+}
+
+// ══════════════════════════════════
+// HELPERS
+// ══════════════════════════════════
+function rosterToArray(roster) {
+  return Object.values(roster || {});
+}
+
+// ══════════════════════════════════
+// OVERRIDE handleRoomUpdate to also watch spinTrigger
+// ══════════════════════════════════
+const _origHandle = handleRoomUpdate;
+// Patch in spinTrigger watching
+const origOnValue = onValue;
+// Re-attach with spinTrigger watch
+function attachListeners2() {
+  clearListeners();
+  const unsub = onValue(roomRef, snap => {
+    if (!snap.exists()) return;
+    cachedRoom = snap.val();
+    watchSpinTrigger(cachedRoom);
+    handleRoomUpdate(cachedRoom);
+  });
+  listeners.push(unsub);
+}
+// Override
+window._attachListeners = attachListeners2;
+
+// ══════════════════════════════════
+// INIT
+// ══════════════════════════════════
+joinFromURL();
+
+// Patch attachListeners to use the spin-aware version
+function attachListeners() {
+  clearListeners();
+  const unsub = onValue(roomRef, snap => {
+    if (!snap.exists()) return;
+    cachedRoom = snap.val();
+    watchSpinTrigger(cachedRoom);
+    handleRoomUpdate(cachedRoom);
+  });
+  listeners.push(unsub);
+}
+</script>
+</body>
+</html>
