@@ -808,7 +808,9 @@ function renderClassicFromState(room) {
   $('gh-progress').textContent = s.winMode === 'rounds' ? `${gs.spinCount}/${s.totalRounds} spins` : `First to ${s.pointsGoal}`;
   $('target-lbl').textContent  = s.winMode === 'rounds' ? 'Rounds' : 'Goal';
   $('target-val').textContent  = s.winMode === 'rounds' ? s.totalRounds : s.pointsGoal;
-  $('pot-amount').textContent  = `$${players.length * s.stake}`;
+  // Pot is always stake × numPlayers, paid once at round start
+  const roundPot = players.length * s.stake;
+  $('pot-amount').textContent = `$${roundPot}`;
   const leader = [...players].sort((a,b) => (b.score||0) - (a.score||0))[0];
   $('gh-leader').textContent   = leader ? `🏅 ${leader.name}` : '';
 
@@ -816,7 +818,7 @@ function renderClassicFromState(room) {
   const sb = $('scoreboard');
   sb.style.gridTemplateColumns = players.length > 3 ? '1fr 1fr' : '1fr';
   sb.innerHTML = players.map((p,i) => {
-    const score = s.winMode === 'rounds' ? (p.score||0) : (p.sessionNet||0);
+    const score = p.score || 0;
     const goal  = s.winMode === 'rounds' ? s.totalRounds : s.pointsGoal;
     return `
       <div class="player-card" id="pc-${i}">
@@ -828,7 +830,7 @@ function renderClassicFromState(room) {
         </div>
         <div class="p-scores">
           <div class="p-wins" id="pw-${i}">${score}</div>
-          <div class="p-sub">${s.winMode === 'rounds' ? 'wins' : 'coins'}</div>
+          <div class="p-sub">spin wins</div>
         </div>
       </div>
     `;
@@ -958,110 +960,121 @@ async function resolveClassicSpin(room, trigger) {
   const maxVal  = Math.max(...active.map(n => results[n].val));
   const winners = active.filter(n => results[n].val === maxVal);
 
-  const roster = {}; // updates to roster
+  const roster = {};
   players.forEach(p => { roster[escKey(p.name)] = { ...p }; });
+
+  // Pot is fixed: stake × numPlayers, paid once per round
+  const roundPot     = players.length * s.stake;
+  const newSpinCount = (gs.spinCount || 0) + 1;
 
   let gsUpdate = {
     lastSpin:    results,
     spinTrigger: null,
     showResults: true,
-    showNext:    true
+    showNext:    true,
+    spinCount:   newSpinCount
   };
 
-  // Build results HTML
-  const pot = players.length * s.stake;
-
   if (winners.length > 1) {
-    // Tie
-    gsUpdate.tieMsg    = `🔄 Tie! ${winners.join(' & ')} — tiebreaker!`;
-    gsUpdate.statusMsg = 'Tiebreaker!';
-    gsUpdate.inPlayoff = true;
+    // Tie — tiebreaker spin, no score or money changes yet
+    gsUpdate.tieMsg       = `🔄 Tie! ${winners.join(' & ')} — tiebreaker!`;
+    gsUpdate.statusMsg    = 'Tiebreaker!';
+    gsUpdate.inPlayoff    = true;
     gsUpdate.playoffNames = winners;
-    gsUpdate.lastResults  = buildClassicResultsHTML(active, results, null, s.stake, pot);
+    gsUpdate.spinCount    = gs.spinCount || 0; // don't count tiebreaker as a real spin
+    gsUpdate.lastResults  = buildClassicResultsHTML(active, results, null, false, roundPot, s.stake, null);
   } else {
-    const winName = winners[0];
+    const winName  = winners[0];
+    roster[escKey(winName)].score = (roster[escKey(winName)].score || 0) + 1;
+
     gsUpdate.inPlayoff    = false;
     gsUpdate.playoffNames = [];
     gsUpdate.tieMsg       = '';
-    gsUpdate.statusMsg    = `🎉 ${winName} wins this spin!`;
-    gsUpdate.spinCount    = (gs.spinCount || 0) + 1;
 
-    // Award
-    players.forEach(p => {
-      const key = escKey(p.name);
-      if (p.name === winName) {
-        roster[key].sessionNet = (p.sessionNet || 0) + pot - s.stake;
-        roster[key].score      = (p.score || 0) + 1;
-      } else if (active.includes(p.name)) {
-        roster[key].sessionNet = (p.sessionNet || 0) - s.stake;
-      }
-    });
+    // Is the round over?
+    const spinsLeft = s.winMode === 'rounds'
+      ? s.totalRounds - newSpinCount      // count down total spins
+      : null;                              // points mode: no spin limit
 
-    gsUpdate.lastResults = buildClassicResultsHTML(active, results, winName, s.stake, pot);
+    const newScore     = roster[escKey(winName)].score;
+    const roundOver    = s.winMode === 'rounds'
+      ? newSpinCount >= s.totalRounds      // all spins used up
+      : newScore >= s.pointsGoal;          // someone hit the points target
 
-    // Check game winner
-    const updated = players.map(p => ({...p, ...roster[escKey(p.name)]}));
-    const gameWinner = checkClassicWinner(updated, s);
-    if (gameWinner) gsUpdate.winner = gameWinner.name;
+    if (roundOver) {
+      // Find round winner: most spin-wins (rounds mode) or who hit points goal (points mode)
+      const updatedScores = players.map(p => ({ name: p.name, score: roster[escKey(p.name)].score || 0 }));
+      const roundWinner   = updatedScores.sort((a,b) => b.score - a.score)[0].name;
+
+      // Settle $: winner gets (n-1)*stake net, everyone else loses stake
+      players.forEach(p => {
+        const key = escKey(p.name);
+        roster[key].sessionNet = (p.sessionNet || 0) + (p.name === roundWinner
+          ? (players.length - 1) * s.stake    // winner: up $15 with 4p/$5 stake
+          : -s.stake);                         // loser: down $5
+      });
+
+      // Reset spin-wins for next round
+      players.forEach(p => { roster[escKey(p.name)].score = 0; });
+
+      gsUpdate.statusMsg   = `🏆 ${roundWinner} wins the round and collects $${roundPot}!`;
+      gsUpdate.lastResults = buildClassicResultsHTML(active, results, winName, true, roundPot, s.stake, roundWinner, players);
+      gsUpdate.roundWinner = roundWinner;
+    } else {
+      const progress = s.winMode === 'rounds'
+        ? `Spin ${newSpinCount}/${s.totalRounds}`
+        : `${newScore}/${s.pointsGoal} wins`;
+      gsUpdate.statusMsg   = `🎯 ${winName} wins this spin! (${progress})`;
+      gsUpdate.lastResults = buildClassicResultsHTML(active, results, winName, false, roundPot, s.stake, null, players);
+    }
   }
 
-  // Write gameState fields as explicit paths to avoid Firebase object-merge issues
   const updates = {};
   Object.entries(gsUpdate).forEach(([k,v]) => { updates[`gameState/${k}`] = v; });
   players.forEach(p => { updates[`roster/${escKey(p.name)}`] = roster[escKey(p.name)]; });
   await update(roomRef, updates);
 
-  if (gsUpdate.winner) {
-    await delay(800);
-    await update(roomRef, { phase: 'winner', 'gameState/winnerName': gsUpdate.winner });
+  if (gsUpdate.roundWinner) {
+    await delay(1200);
+    await update(roomRef, { phase: 'winner', 'gameState/winnerName': gsUpdate.roundWinner });
   }
 }
 
-function buildClassicResultsHTML(active, results, winName, stake, pot) {
-  let html = `<h4>📋 This Spin's Results</h4>`;
+function buildClassicResultsHTML(active, results, spinWinner, isRoundEnd, roundPot, stake, roundWinner, allPlayers) {
+  let html = isRoundEnd
+    ? `<h4>🏆 Round over! ${roundWinner} collects $${roundPot}</h4>`
+    : `<h4>📋 Spin result &nbsp;·&nbsp; <span style="color:var(--gold)">$${roundPot} pot</span></h4>`;
   active.forEach(name => {
-    const r = results[name];
-    const isWin = name === winName;
-    const netStr = isWin ? `+$${pot - stake}` : (winName ? `-$${stake}` : '');
+    const r     = results[name];
+    const isSpinWin = name === spinWinner;
+    let badge = '';
+    if (isRoundEnd) {
+      badge = name === roundWinner
+        ? `<span class="result-badge badge-win">🏆 +$${(allPlayers.length - 1) * stake}</span>`
+        : `<span class="result-badge badge-wrong">-$${stake}</span>`;
+    } else if (isSpinWin) {
+      badge = `<span class="result-badge badge-correct">✅ +1 win</span>`;
+    }
     html += `<div class="result-row">
       <span class="result-heb">${r.heb}</span>
       <span class="result-name">${name}</span>
       <span class="result-letter ${r.cls}">${r.name}</span>
-      ${isWin ? `<span class="result-badge badge-win">🏆 ${netStr}</span>` : (winName ? `<span style="font-size:0.78rem;color:var(--silver);">${netStr}</span>` : '')}
+      ${badge}
     </div>`;
   });
   return html;
 }
 
-function checkClassicWinner(players, s) {
-  if (s.winMode === 'rounds' && players.some(p => (p.score||0) > 0)) {
-    const spun = players.reduce((max, p) => Math.max(max, p.score||0), 0);
-    // Only end if totalRounds spins done — track by spinCount
-    return null; // handled by spinCount in gs
-  }
-  if (s.winMode === 'points') return players.find(p => (p.sessionNet||0) >= s.pointsGoal) || null;
-  return null;
-}
-
 window.hostNextSpin = async function() {
   if (!amHost) return;
-  const gs = cachedRoom.gameState;
-  const s  = cachedRoom.settings;
-
-  // Check if game is over by rounds
-  if (s.winMode === 'rounds' && gs.spinCount >= s.totalRounds) {
-    const players = rosterArr(cachedRoom.roster);
-    const top = [...players].sort((a,b) => (b.score||0) - (a.score||0))[0];
-    await update(roomRef, { phase: 'winner', 'gameState/winnerName': top.name });
-    return;
-  }
-
   await update(ref(db, `rooms2/${roomCode}/gameState`), {
-    showResults: false,
-    showNext:    false,
-    nextTs:      Date.now(),
-    statusMsg:   'Ready to spin!',
-    tieMsg:      ''
+    showResults:  false,
+    showNext:     false,
+    nextTs:       Date.now(),
+    statusMsg:    'Ready to spin!',
+    tieMsg:       '',
+    inPlayoff:    false,
+    playoffNames: []
   });
 };
 
@@ -1457,12 +1470,13 @@ function showWinnerOverlay(room) {
   if (!winner) return;
 
   $('ov-winner-name').textContent = `🎉 ${winner.name}`;
+  const net = winner.sessionNet || 0;
+  const netStr = `${net >= 0 ? '+' : ''}$${net}`;
   if (s.variant === 'classic') {
-    $('ov-winner-detail').textContent = s.winMode === 'rounds'
-      ? `Won ${winner.score||0} rounds! Net: ${winner.sessionNet >= 0 ? '+' : ''}$${winner.sessionNet||0}`
-      : `Earned $${winner.sessionNet||0}`;
+    const roundPot = players.length * s.stake;
+    $('ov-winner-detail').textContent = `Collected the $${roundPot} pot! (${netStr} net)`;
   } else {
-    $('ov-winner-detail').textContent = `First to ${s.pointsGoal} pot wins! Net: ${winner.sessionNet >= 0 ? '+' : ''}$${winner.sessionNet||0}`;
+    $('ov-winner-detail').textContent = `First to ${s.pointsGoal} pot wins! Net: ${netStr}`;
   }
   $('btn-play-again').style.display  = amHost ? 'block' : 'none';
   $('winner-host-note').style.display = amHost ? 'none' : 'block';
