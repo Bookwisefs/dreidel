@@ -348,4 +348,1135 @@
         <div class="mode-pill">
           <button class="mode-pill-btn active" id="mpbtn-rounds" onclick="hostSetWinMode('rounds')">🏅 Best of Rounds<br><span style="font-size:0.78rem;">Most round wins</span></button>
           <div class="mode-pill-divider"></div>
-          <button class="mode-pill-btn" id="mpbtn-points" oncli
+          <button class="mode-pill-btn" id="mpbtn-points" onclick="hostSetWinMode('points')">⭐ First to Points<br><span style="font-size:0.78rem;">Race to a total</span></button>
+        </div>
+        <div id="win-input-rounds" style="margin-top:12px;">
+          <label>Total rounds to play</label>
+          <input type="number" id="total-rounds" value="10" min="1" oninput="pushSettings()">
+        </div>
+        <div id="win-input-points" style="margin-top:12px;display:none;">
+          <label>Points / pot-wins needed to win</label>
+          <input type="number" id="points-goal" value="50" min="1" oninput="pushSettings()">
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>💰 Stake Per Spin</h3>
+        <label>Coins each player puts in per spin</label>
+        <input type="number" id="stake-amount" value="5" min="1" oninput="pushSettings()">
+      </div>
+
+      <div class="panel">
+        <h3>📋 Player Roster</h3>
+        <p class="info-note" style="margin-bottom:10px;">Players who join the link are added automatically.</p>
+        <div class="add-row">
+          <input type="text" id="new-player-name" placeholder="Add player name" onkeydown="if(event.key==='Enter') addRosterPlayer()">
+          <button class="btn-add" onclick="addRosterPlayer()">+ Add</button>
+        </div>
+        <div class="roster-list" id="roster-list"></div>
+      </div>
+
+      <button class="btn-primary" id="btn-start-game" onclick="hostStartGame()" disabled>🎲 Start Game!</button>
+    </div>
+
+    <!-- Non-host waiting view -->
+    <div id="guest-wait" style="display:none;">
+      <div class="panel" style="text-align:center;">
+        <h3>⏳ Waiting for host to start...</h3>
+        <p style="color:var(--silver);font-size:0.9rem;margin-top:8px;">The host is setting up the game.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN: CLASSIC GAME ══ -->
+  <div id="screen-game" class="screen">
+    <div class="game-header">
+      <span><strong id="gh-round">Spin 1</strong></span>
+      <span id="gh-progress"></span>
+      <span id="gh-leader"></span>
+    </div>
+    <div class="info-bar">
+      <div class="info-block">
+        <div class="info-lbl">🪙 Pot</div>
+        <div class="info-val" id="pot-amount">$0</div>
+      </div>
+      <div class="info-div"></div>
+      <div class="info-block">
+        <div class="info-lbl" id="target-lbl">Target</div>
+        <div class="info-val" id="target-val">–</div>
+      </div>
+    </div>
+    <div class="status-msg" id="status-msg">Ready to spin!</div>
+    <div class="tie-notice" id="tie-notice"></div>
+    <div class="scoreboard" id="scoreboard"></div>
+    <div class="results-banner" id="results-banner" style="display:none;"></div>
+    <div class="ledger-two-col" id="classic-ledgers" style="display:none;">
+      <div class="ledger-panel ledger-round">
+        <h4>🏅 This Round</h4>
+        <div id="classic-round-rows"></div>
+      </div>
+      <div class="ledger-panel ledger-session">
+        <h4>💰 Session $</h4>
+        <div id="classic-session-rows"></div>
+      </div>
+    </div>
+    <button class="btn-spin" id="spin-btn" onclick="hostTriggerSpin()" disabled>🌀 SPIN ALL DREIDELS!</button>
+    <button class="btn-next" id="next-btn" onclick="hostNextSpin()" style="display:none;" disabled>Next Spin →</button>
+    <div class="host-only-note" id="classic-host-note">Only the host can spin.</div>
+    <button class="btn-secondary" onclick="confirmReset()">↩ New Game</button>
+  </div>
+
+  <!-- ══ SCREEN: GUESS GAME ══ -->
+  <div id="screen-guess" class="screen">
+    <div class="game-header">
+      <span><strong id="gg-round">Spin 1</strong></span>
+      <span id="gg-progress"></span>
+      <span id="gg-leader"></span>
+    </div>
+    <div class="info-bar">
+      <div class="info-block">
+        <div class="info-lbl">🪙 Pot</div>
+        <div class="info-val" id="guess-pot">$0</div>
+      </div>
+      <div class="info-div"></div>
+      <div class="info-block">
+        <div class="info-lbl">Pot Wins Goal</div>
+        <div class="info-val" id="guess-goal">–</div>
+      </div>
+      <div class="info-div"></div>
+      <div class="info-block">
+        <div class="info-lbl">Leader</div>
+        <div class="info-val" id="guess-leader-val" style="font-size:1rem;">–</div>
+      </div>
+    </div>
+    <div class="status-msg" id="guess-status">Pick your letter, then wait for the spin!</div>
+    <div class="tie-notice" id="guess-tie-notice"></div>
+    <div id="guess-grid" class="guess-grid"></div>
+    <div class="scoreboard" id="guess-scoreboard"></div>
+    <div class="results-banner" id="guess-results-banner" style="display:none;"></div>
+    <div class="ledger-two-col" id="guess-ledgers" style="display:none;">
+      <div class="ledger-panel ledger-round">
+        <h4>🏅 This Round</h4>
+        <div id="guess-round-rows"></div>
+      </div>
+      <div class="ledger-panel ledger-session">
+        <h4>💰 Session $</h4>
+        <div id="guess-session-rows"></div>
+      </div>
+    </div>
+    <button class="btn-spin" id="guess-spin-btn" onclick="hostTriggerGuessSpin()" disabled>🌀 SPIN!</button>
+    <button class="btn-spin" id="guess-playoff-btn" onclick="hostTriggerPlayoffSpin()" style="display:none;" disabled>⚔️ PLAYOFF SPIN!</button>
+    <button class="btn-next" id="guess-next-btn" onclick="hostNextGuessSpin()" style="display:none;" disabled>Next Spin →</button>
+    <div class="host-only-note" id="guess-host-note">Only the host can spin.</div>
+    <button class="btn-secondary" onclick="confirmReset()">↩ New Game</button>
+  </div>
+</div>
+
+<!-- WINNER OVERLAY -->
+<div class="overlay" id="ov-winner">
+  <div class="overlay-box">
+    <div class="ov-emoji">🏆</div>
+    <div class="ov-title">Winner!</div>
+    <div class="ov-name" id="ov-winner-name"></div>
+    <div class="ov-detail" id="ov-winner-detail"></div>
+    <div class="ov-actions">
+      <button class="btn-primary" id="btn-play-again" onclick="hostPlayAgain()">🔄 Play Again</button>
+      <div class="host-only-note" id="winner-host-note">Only the host can restart.</div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, update, onValue, remove, serverTimestamp, onDisconnect }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyBBSscmGkzsEWK4uw7QyLi5VNiv4Vfsm2M",
+  authDomain: "dreidel-8d1cd.firebaseapp.com",
+  databaseURL: "https://dreidel-8d1cd-default-rtdb.firebaseio.com",
+  projectId: "dreidel-8d1cd",
+  storageBucket: "dreidel-8d1cd.firebasestorage.app",
+  messagingSenderId: "1052615896794",
+  appId: "1:1052615896794:web:e32328d062ec98c3cdbfe3"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getDatabase(app);
+
+// ══════════════════════════════════
+// CONSTANTS
+// ══════════════════════════════════
+const DREIDEL = [
+  { name:'Gimmel', heb:'ג', val:4, cls:'gimmel' },
+  { name:'Hey',    heb:'ה', val:3, cls:'hey'    },
+  { name:'Nun',    heb:'נ', val:2, cls:'nun'    },
+  { name:'Shin',   heb:'ש', val:1, cls:'shin'   }
+];
+const SPIN_EMOJIS = ['🕎','✡️','⭐','🌟','💫'];
+
+// ══════════════════════════════════
+// LOCAL STATE
+// ══════════════════════════════════
+let roomCode  = null;
+let myName    = null;
+let amHost    = false;
+let roomRef   = null;
+let unsubRoom = null;
+let animating = false;
+let lastSpinTs = 0;
+let lastNextTs = 0;
+let cachedRoom = null;
+
+// ══════════════════════════════════
+// UTILS
+// ══════════════════════════════════
+const $ = id => document.getElementById(id);
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+}
+function genCode() {
+  const c = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:4}, () => c[Math.floor(Math.random()*c.length)]).join('');
+}
+function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
+function escKey(n) { return n.replace(/[.#$[\]/]/g,'_'); }
+function rosterArr(roster) { return Object.values(roster || {}); }
+
+// ══════════════════════════════════
+// ENTRY
+// ══════════════════════════════════
+window.createRoom = async function() {
+  const name = $('my-name').value.trim();
+  if (!name) { $('entry-error').textContent = 'Please enter your name.'; return; }
+  myName = name; amHost = true;
+  roomCode = genCode();
+  roomRef  = ref(db, `rooms2/${roomCode}`);
+  await set(roomRef, {
+    host: myName,
+    phase: 'lobby',
+    settings: { variant:'classic', winMode:'rounds', totalRounds:10, pointsGoal:50, stake:5 },
+    roster: {},
+    online: {},
+    gameState: null
+  });
+  await joinPresence();
+  await addToRoster(myName);
+  listenRoom();
+  showLobby();
+};
+
+window.joinRoom = async function() {
+  const name = $('my-name').value.trim();
+  const code = $('join-code').value.trim().toUpperCase();
+  if (!name) { $('entry-error').textContent = 'Please enter your name.'; return; }
+  if (!code) { $('entry-error').textContent = 'Please enter a room code.'; return; }
+  const snap = await get(ref(db, `rooms2/${code}`));
+  if (!snap.exists()) { $('entry-error').textContent = 'Room not found. Check the code.'; return; }
+  myName = name; amHost = false; roomCode = code;
+  roomRef = ref(db, `rooms2/${roomCode}`);
+  await joinPresence();
+  await addToRoster(myName);
+  listenRoom();
+};
+
+async function joinPresence() {
+  const meRef = ref(db, `rooms2/${roomCode}/online/${escKey(myName)}`);
+  await set(meRef, { name: myName, joinedAt: serverTimestamp() });
+  onDisconnect(meRef).remove();
+}
+
+async function addToRoster(name) {
+  const key  = escKey(name);
+  const rRef = ref(db, `rooms2/${roomCode}/roster/${key}`);
+  const snap = await get(rRef);
+  if (!snap.exists()) {
+    await set(rRef, { name, sessionNet:0, score:0, guessPoints:0 });
+  }
+}
+
+// URL auto-join
+(function() {
+  const p = new URLSearchParams(window.location.search);
+  const c = p.get('room');
+  if (c) $('join-code').value = c.toUpperCase();
+})();
+
+window.copyLink = function() {
+  const link = `${location.origin}${location.pathname}?room=${roomCode}`;
+  navigator.clipboard.writeText(link);
+  const btn = document.querySelector('.copy-btn');
+  btn.textContent = '✅ Copied!';
+  setTimeout(() => btn.textContent = '📋 Copy shareable link', 2000);
+};
+
+// ══════════════════════════════════
+// FIREBASE LISTENER
+// ══════════════════════════════════
+function listenRoom() {
+  if (unsubRoom) unsubRoom();
+  unsubRoom = onValue(roomRef, snap => {
+    if (!snap.exists()) return;
+    cachedRoom = snap.val();
+    handleRoomUpdate(cachedRoom);
+  });
+}
+
+function handleRoomUpdate(room) {
+  const phase = room.phase;
+  renderOnlineList(room.online || {});
+
+  if (phase === 'lobby') {
+    showLobby();
+    renderRosterList(room.roster || {});
+    syncSettingsDisplay(room.settings || {});
+    const count = rosterArr(room.roster).length;
+    if (amHost) $('btn-start-game').disabled = count < 2;
+  } else if (phase === 'classic') {
+    if (!animating) renderClassicFromState(room);
+  } else if (phase === 'guess') {
+    if (!animating) renderGuessFromState(room);
+  } else if (phase === 'winner') {
+    showWinnerOverlay(room);
+  }
+
+  // Handle spin trigger for all clients
+  if ((phase === 'classic' || phase === 'guess') && room.gameState?.spinTrigger) {
+    const ts = room.gameState.spinTrigger.timestamp;
+    if (ts !== lastSpinTs) {
+      lastSpinTs = ts;
+      if (phase === 'classic') animateClassicSpin(room);
+      else animateGuessSpin(room);
+    }
+  }
+
+  // Handle next-spin trigger
+  if ((phase === 'classic' || phase === 'guess') && room.gameState?.nextTs) {
+    const ts = room.gameState.nextTs;
+    if (ts !== lastNextTs) {
+      lastNextTs = ts;
+      if (phase === 'classic') applyNextClassic(room);
+      else applyNextGuess(room);
+    }
+  }
+}
+
+// ══════════════════════════════════
+// LOBBY
+// ══════════════════════════════════
+function showLobby() {
+  showScreen('screen-lobby');
+  $('display-room-code').textContent = roomCode;
+  $('display-room-link').textContent = `${location.origin}${location.pathname}?room=${roomCode}`;
+  $('host-setup').style.display  = amHost ? 'block' : 'none';
+  $('guest-wait').style.display  = amHost ? 'none'  : 'block';
+}
+
+function renderOnlineList(online) {
+  const names = Object.values(online).map(o => o.name || Object.keys(online).find(k => online[k] === o));
+  $('online-list').innerHTML = Object.entries(online).map(([k,v]) => {
+    const n = v.name || k;
+    const isHost = n === cachedRoom?.host;
+    return `<div class="online-pip">🟢 ${n}${isHost ? '<span class="host-badge">host</span>' : ''}</div>`;
+  }).join('') || '<div style="color:var(--silver);font-style:italic;font-size:0.88rem;">Waiting...</div>';
+}
+
+function renderRosterList(roster) {
+  $('roster-list').innerHTML = rosterArr(roster).map(p => `
+    <div class="roster-item">
+      <span>🎭 ${p.name}</span>
+      ${amHost ? `<button class="btn-icon" onclick="removeRosterPlayer('${escKey(p.name)}')">✕</button>` : ''}
+    </div>
+  `).join('') || '<div style="color:var(--silver);font-style:italic;font-size:0.88rem;margin-top:6px;">No players yet.</div>';
+}
+
+window.addRosterPlayer = async function() {
+  if (!amHost) return;
+  const inp  = $('new-player-name');
+  const name = inp.value.trim();
+  if (!name) return;
+  await addToRoster(name);
+  inp.value = '';
+  inp.focus();
+};
+
+window.removeRosterPlayer = async function(key) {
+  if (!amHost) return;
+  await remove(ref(db, `rooms2/${roomCode}/roster/${key}`));
+};
+
+// ══════════════════════════════════
+// HOST SETTINGS
+// ══════════════════════════════════
+window.hostSetVariant = function(v) {
+  if (!amHost) return;
+  document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
+  $(`vbtn-${v}`).classList.add('active');
+  if (v === 'guess') hostSetWinMode('points');
+  pushSettings();
+};
+
+window.hostSetWinMode = function(m) {
+  if (!amHost) return;
+  $('mpbtn-rounds').classList.toggle('active', m === 'rounds');
+  $('mpbtn-points').classList.toggle('active', m === 'points');
+  $('win-input-rounds').style.display = m === 'rounds' ? 'block' : 'none';
+  $('win-input-points').style.display = m === 'points' ? 'block' : 'none';
+  pushSettings();
+};
+
+function pushSettings() {
+  if (!amHost) return;
+  const variant  = $('vbtn-classic').classList.contains('active') ? 'classic' : 'guess';
+  const winMode  = $('mpbtn-rounds').classList.contains('active') ? 'rounds' : 'points';
+  update(roomRef, { settings: {
+    variant,
+    winMode,
+    totalRounds: parseInt($('total-rounds').value) || 10,
+    pointsGoal:  parseInt($('points-goal').value)  || 50,
+    stake:       parseInt($('stake-amount').value)  || 5
+  }});
+}
+
+function syncSettingsDisplay(s) {
+  if (!amHost) return;
+  if (s.variant) {
+    document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
+    $(`vbtn-${s.variant}`)?.classList.add('active');
+  }
+  if (s.winMode) {
+    $('mpbtn-rounds').classList.toggle('active', s.winMode === 'rounds');
+    $('mpbtn-points').classList.toggle('active', s.winMode === 'points');
+    $('win-input-rounds').style.display = s.winMode === 'rounds' ? 'block' : 'none';
+    $('win-input-points').style.display = s.winMode === 'points' ? 'block' : 'none';
+  }
+  if (s.totalRounds) $('total-rounds').value = s.totalRounds;
+  if (s.pointsGoal)  $('points-goal').value  = s.pointsGoal;
+  if (s.stake)       $('stake-amount').value  = s.stake;
+}
+
+// ══════════════════════════════════
+// HOST: START GAME
+// ══════════════════════════════════
+window.hostStartGame = async function() {
+  if (!amHost) return;
+  const s       = cachedRoom.settings;
+  const players = rosterArr(cachedRoom.roster).map(p => ({
+    ...p, sessionNet:0, score:0, guessPoints:0
+  }));
+  // Write cleaned roster back
+  const cleanRoster = {};
+  players.forEach(p => { cleanRoster[escKey(p.name)] = { name:p.name, sessionNet:0, score:0, guessPoints:0 }; });
+
+  const gs = {
+    spinCount:   0,
+    guessPot:    0,
+    inPlayoff:   false,
+    playoffNames:[],
+    guesses:     {},    // name -> dreidelIdx (for guess mode)
+    lastResults: null,
+    lastSpin:    null,
+    spinTrigger: null,
+    nextTs:      null,
+    statusMsg:   s.variant === 'classic' ? 'Ready to spin!' : 'Pick your letter, then wait for the spin!',
+    tieMsg:      '',
+    showResults: false,
+    showNext:    false,
+    winner:      null
+  };
+
+  await update(roomRef, {
+    phase:   s.variant,
+    roster:  cleanRoster,
+    gameState: gs
+  });
+};
+
+// ══════════════════════════════════
+// CLASSIC: RENDER FROM STATE
+// ══════════════════════════════════
+function renderClassicFromState(room) {
+  showScreen('screen-game');
+  const s   = room.settings;
+  const gs  = room.gameState;
+  const players = rosterArr(room.roster);
+
+  // Header
+  $('gh-round').textContent    = `Spin ${gs.spinCount + 1}`;
+  $('gh-progress').textContent = s.winMode === 'rounds' ? `${gs.spinCount}/${s.totalRounds} spins` : `First to ${s.pointsGoal}`;
+  $('target-lbl').textContent  = s.winMode === 'rounds' ? 'Rounds' : 'Goal';
+  $('target-val').textContent  = s.winMode === 'rounds' ? s.totalRounds : s.pointsGoal;
+  $('pot-amount').textContent  = `$${players.length * s.stake}`;
+  const leader = [...players].sort((a,b) => (b.score||0) - (a.score||0))[0];
+  $('gh-leader').textContent   = leader ? `🏅 ${leader.name}` : '';
+
+  // Scoreboard
+  const sb = $('scoreboard');
+  sb.style.gridTemplateColumns = players.length > 3 ? '1fr 1fr' : '1fr';
+  sb.innerHTML = players.map((p,i) => {
+    const score = s.winMode === 'rounds' ? (p.score||0) : (p.sessionNet||0);
+    const goal  = s.winMode === 'rounds' ? s.totalRounds : s.pointsGoal;
+    return `
+      <div class="player-card" id="pc-${i}">
+        <span class="d-icon" id="di-${i}">🕎</span>
+        <div class="p-info">
+          <div class="p-name">${p.name}</div>
+          <div class="p-result" id="pr-${i}">${gs.lastSpin?.[p.name] ? gs.lastSpin[p.name].name + '!' : 'Ready...'}</div>
+          <div class="prog-wrap"><div class="prog-bar" id="pb-${i}" style="width:${Math.min((Math.abs(score)/Math.max(goal,1))*100,100)}%"></div></div>
+        </div>
+        <div class="p-scores">
+          <div class="p-wins" id="pw-${i}">${score}</div>
+          <div class="p-sub">${s.winMode === 'rounds' ? 'wins' : 'coins'}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Restore spin result classes
+  if (gs.lastSpin) {
+    players.forEach((p,i) => {
+      const r = gs.lastSpin[p.name];
+      if (r) {
+        const el = $(`pr-${i}`);
+        if (el) { el.textContent = r.name + '!'; el.className = `p-result ${r.cls}`; }
+        const di = $(`di-${i}`);
+        if (di) di.textContent = r.heb;
+      }
+    });
+  }
+
+  // Status / tie
+  $('status-msg').textContent = gs.statusMsg || 'Ready to spin!';
+  $('tie-notice').style.display = gs.tieMsg ? 'block' : 'none';
+  $('tie-notice').textContent   = gs.tieMsg || '';
+
+  // Results
+  if (gs.showResults && gs.lastResults) {
+    $('results-banner').style.display = 'block';
+    $('results-banner').innerHTML = gs.lastResults;
+  } else {
+    $('results-banner').style.display = 'none';
+  }
+
+  // Ledger
+  renderBothLedgers(room.roster, s, 'classic-ledgers', 'classic-round-rows', 'classic-session-rows');
+
+  // Buttons
+  const canSpin = amHost && !gs.showNext;
+  $('spin-btn').style.display = gs.showNext ? 'none' : 'block';
+  $('spin-btn').disabled = !canSpin;
+  $('next-btn').style.display = gs.showNext ? 'block' : 'none';
+  $('next-btn').disabled = !amHost;
+  $('classic-host-note').style.display = amHost ? 'none' : 'block';
+}
+
+// ══════════════════════════════════
+// CLASSIC: HOST TRIGGERS SPIN
+// ══════════════════════════════════
+window.hostTriggerSpin = async function() {
+  if (!amHost || animating) return;
+  const gs      = cachedRoom.gameState;
+  const players = rosterArr(cachedRoom.roster);
+
+  // Determine active spinners
+  const activePlayers = gs.inPlayoff && gs.playoffNames.length
+    ? gs.playoffNames
+    : players.map(p => p.name);
+
+  // Roll dice
+  const results = {};
+  activePlayers.forEach(name => {
+    results[name] = DREIDEL[Math.floor(Math.random() * DREIDEL.length)];
+  });
+
+  await update(ref(db, `rooms2/${roomCode}/gameState`), {
+    spinTrigger: { activePlayers, results, timestamp: Date.now() }
+  });
+};
+
+async function animateClassicSpin(room) {
+  if (animating) return;
+  animating = true;
+  $('spin-btn').disabled = true;
+
+  const gs      = room.gameState;
+  const trigger = gs.spinTrigger;
+  const players = rosterArr(room.roster);
+  const s       = room.settings;
+
+  // Dim non-active
+  players.forEach((p,i) => {
+    $(`pc-${i}`)?.classList.toggle('dimmed', !trigger.activePlayers.includes(p.name));
+    const pr = $(`pr-${i}`);
+    if (pr && trigger.activePlayers.includes(p.name)) { pr.textContent = '...'; pr.className = 'p-result'; }
+  });
+
+  // Spin animation
+  const activeIdxs = players.map((p,i) => trigger.activePlayers.includes(p.name) ? i : -1).filter(i => i >= 0);
+  activeIdxs.forEach(i => $(`pc-${i}`)?.classList.add('spinning'));
+
+  const dur = 1200 + Math.random() * 700;
+  const iv  = setInterval(() => {
+    activeIdxs.forEach(i => { const el = $(`di-${i}`); if (el) el.textContent = SPIN_EMOJIS[Math.floor(Math.random()*SPIN_EMOJIS.length)]; });
+  }, 75);
+
+  await delay(dur);
+  clearInterval(iv);
+
+  // Land
+  activeIdxs.forEach(i => {
+    const p   = players[i];
+    const res = trigger.results[p.name];
+    $(`pc-${i}`)?.classList.remove('spinning');
+    const di = $(`di-${i}`); if (di) di.textContent = res.heb;
+    const pr = $(`pr-${i}`); if (pr) { pr.textContent = res.name + '!'; pr.className = `p-result ${res.cls}`; }
+  });
+
+  await delay(400);
+
+  // Host resolves outcome
+  if (amHost) await resolveClassicSpin(room, trigger);
+
+  animating = false;
+};
+
+async function resolveClassicSpin(room, trigger) {
+  const players = rosterArr(room.roster);
+  const s       = room.settings;
+  const gs      = room.gameState;
+
+  const active  = trigger.activePlayers;
+  const results = trigger.results;
+
+  const maxVal  = Math.max(...active.map(n => results[n].val));
+  const winners = active.filter(n => results[n].val === maxVal);
+
+  const roster = {}; // updates to roster
+  players.forEach(p => { roster[escKey(p.name)] = { ...p }; });
+
+  let gsUpdate = {
+    lastSpin:    results,
+    spinTrigger: null,
+    showResults: true,
+    showNext:    true
+  };
+
+  // Build results HTML
+  const pot = players.length * s.stake;
+
+  if (winners.length > 1) {
+    // Tie
+    gsUpdate.tieMsg    = `🔄 Tie! ${winners.join(' & ')} — tiebreaker!`;
+    gsUpdate.statusMsg = 'Tiebreaker!';
+    gsUpdate.inPlayoff = true;
+    gsUpdate.playoffNames = winners;
+    gsUpdate.lastResults  = buildClassicResultsHTML(active, results, null, s.stake, pot);
+  } else {
+    const winName = winners[0];
+    gsUpdate.inPlayoff    = false;
+    gsUpdate.playoffNames = [];
+    gsUpdate.tieMsg       = '';
+    gsUpdate.statusMsg    = `🎉 ${winName} wins this spin!`;
+    gsUpdate.spinCount    = (gs.spinCount || 0) + 1;
+
+    // Award
+    players.forEach(p => {
+      const key = escKey(p.name);
+      if (p.name === winName) {
+        roster[key].sessionNet = (p.sessionNet || 0) + pot - s.stake;
+        roster[key].score      = (p.score || 0) + 1;
+      } else if (active.includes(p.name)) {
+        roster[key].sessionNet = (p.sessionNet || 0) - s.stake;
+      }
+    });
+
+    gsUpdate.lastResults = buildClassicResultsHTML(active, results, winName, s.stake, pot);
+
+    // Check game winner
+    const updated = players.map(p => ({...p, ...roster[escKey(p.name)]}));
+    const gameWinner = checkClassicWinner(updated, s);
+    if (gameWinner) gsUpdate.winner = gameWinner.name;
+  }
+
+  const updates = { gameState: { ...gs, ...gsUpdate } };
+  players.forEach(p => { updates[`roster/${escKey(p.name)}`] = roster[escKey(p.name)]; });
+  await update(roomRef, updates);
+
+  if (gsUpdate.winner) {
+    await delay(800);
+    await update(roomRef, { phase: 'winner', 'gameState/winnerName': gsUpdate.winner });
+  }
+}
+
+function buildClassicResultsHTML(active, results, winName, stake, pot) {
+  let html = `<h4>📋 This Spin's Results</h4>`;
+  active.forEach(name => {
+    const r = results[name];
+    const isWin = name === winName;
+    const netStr = isWin ? `+$${pot - stake}` : (winName ? `-$${stake}` : '');
+    html += `<div class="result-row">
+      <span class="result-heb">${r.heb}</span>
+      <span class="result-name">${name}</span>
+      <span class="result-letter ${r.cls}">${r.name}</span>
+      ${isWin ? `<span class="result-badge badge-win">🏆 ${netStr}</span>` : (winName ? `<span style="font-size:0.78rem;color:var(--silver);">${netStr}</span>` : '')}
+    </div>`;
+  });
+  return html;
+}
+
+function checkClassicWinner(players, s) {
+  if (s.winMode === 'rounds' && players.some(p => (p.score||0) > 0)) {
+    const spun = players.reduce((max, p) => Math.max(max, p.score||0), 0);
+    // Only end if totalRounds spins done — track by spinCount
+    return null; // handled by spinCount in gs
+  }
+  if (s.winMode === 'points') return players.find(p => (p.sessionNet||0) >= s.pointsGoal) || null;
+  return null;
+}
+
+window.hostNextSpin = async function() {
+  if (!amHost) return;
+  const gs = cachedRoom.gameState;
+  const s  = cachedRoom.settings;
+
+  // Check if game is over by rounds
+  if (s.winMode === 'rounds' && gs.spinCount >= s.totalRounds) {
+    const players = rosterArr(cachedRoom.roster);
+    const top = [...players].sort((a,b) => (b.score||0) - (a.score||0))[0];
+    await update(roomRef, { phase: 'winner', 'gameState/winnerName': top.name });
+    return;
+  }
+
+  await update(ref(db, `rooms2/${roomCode}/gameState`), {
+    showResults: false,
+    showNext:    false,
+    nextTs:      Date.now(),
+    statusMsg:   'Ready to spin!',
+    tieMsg:      ''
+  });
+};
+
+function applyNextClassic(room) {
+  $('results-banner').style.display = 'none';
+  $('tie-notice').style.display     = 'none';
+  $('status-msg').textContent       = 'Ready to spin!';
+  $('spin-btn').style.display       = 'block';
+  $('spin-btn').disabled            = !amHost;
+  $('next-btn').style.display       = 'none';
+  // Undim all
+  rosterArr(room.roster).forEach((_,i) => $(`pc-${i}`)?.classList.remove('dimmed'));
+}
+
+// ══════════════════════════════════
+// GUESS: RENDER FROM STATE
+// ══════════════════════════════════
+function renderGuessFromState(room) {
+  showScreen('screen-guess');
+  const s       = room.settings;
+  const gs      = room.gameState;
+  const players = rosterArr(room.roster);
+
+  // Header
+  const spinLabel = gs.inPlayoff ? '⚔️ Playoff!' : `Spin ${gs.spinCount + 1}`;
+  $('gg-round').textContent    = spinLabel;
+  $('gg-progress').textContent = `First to ${s.pointsGoal} pot wins`;
+  $('guess-goal').textContent  = s.pointsGoal;
+  $('guess-pot').textContent   = `$${gs.guessPot || 0}`;
+  const leader = [...players].sort((a,b) => (b.guessPoints||0) - (a.guessPoints||0))[0];
+  $('gg-leader').textContent       = leader ? `🏅 ${leader.name}` : '';
+  $('guess-leader-val').textContent = leader ? `${leader.name} (${leader.guessPoints||0})` : '–';
+
+  // Guess grid
+  const activeNames = gs.inPlayoff ? gs.playoffNames : players.map(p => p.name);
+  renderGuessGrid(players, gs.guesses || {}, activeNames, gs.showNext || gs.showResults);
+
+  // Scoreboard
+  renderGuessScoreboard(players, s);
+
+  // Status
+  $('guess-status').textContent = gs.statusMsg || 'Pick your letter!';
+  $('guess-tie-notice').style.display = gs.tieMsg ? 'block' : 'none';
+  $('guess-tie-notice').textContent   = gs.tieMsg || '';
+
+  // Results
+  if (gs.showResults && gs.lastResults) {
+    $('guess-results-banner').style.display = 'block';
+    $('guess-results-banner').innerHTML = gs.lastResults;
+  } else {
+    $('guess-results-banner').style.display = 'none';
+  }
+
+  // Ledger
+  renderBothLedgers(room.roster, s, 'guess-ledgers', 'guess-round-rows', 'guess-session-rows');
+
+  // Buttons
+  const allGuessed = activeNames.every(n => (gs.guesses||{})[escKey(n)] !== undefined);
+  $('guess-spin-btn').style.display    = (!gs.inPlayoff && !gs.showNext) ? 'block' : 'none';
+  $('guess-spin-btn').disabled         = !amHost || !allGuessed;
+  $('guess-playoff-btn').style.display = (gs.inPlayoff && !gs.showNext) ? 'block' : 'none';
+  $('guess-playoff-btn').disabled      = !amHost || !allGuessed;
+  $('guess-next-btn').style.display    = gs.showNext ? 'block' : 'none';
+  $('guess-next-btn').disabled         = !amHost;
+  $('guess-host-note').style.display   = amHost ? 'none' : 'block';
+}
+
+function renderGuessGrid(players, guesses, activeNames, locked) {
+  $('guess-grid').innerHTML = activeNames.map(name => {
+    const selectedIdx = guesses[escKey(name)];
+    const isMe = name === myName;
+    const canGuess = isMe && !locked;
+    return `
+      <div class="guess-player-row">
+        <div class="guess-player-name">🎭 ${name}${isMe ? ' (you)' : ''} — ${selectedIdx !== undefined ? '✅ locked in' : 'pick a letter:'}</div>
+        <div class="guess-btns">
+          ${DREIDEL.map((d,di) => `
+            <div class="guess-btn ${selectedIdx === di ? 'selected' : ''} ${!canGuess ? 'locked' : ''}"
+              onclick="${canGuess ? `submitGuess('${escKey(name)}',${di})` : ''}">
+              <span class="g-heb">${d.heb}</span>
+              <span class="g-name">${d.name}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderGuessScoreboard(players, s) {
+  const sb = $('guess-scoreboard');
+  sb.style.gridTemplateColumns = players.length > 3 ? '1fr 1fr' : '1fr';
+  sb.innerHTML = players.map((p,i) => `
+    <div class="player-card" id="gpc-${i}">
+      <span class="d-icon" id="gdi-${i}">🕎</span>
+      <div class="p-info">
+        <div class="p-name">${p.name}</div>
+        <div class="p-result" id="gpr-${i}">Ready...</div>
+        <div class="prog-wrap"><div class="prog-bar" id="gpb-${i}" style="width:${Math.min(((p.guessPoints||0)/s.pointsGoal)*100,100)}%"></div></div>
+      </div>
+      <div class="p-scores">
+        <div class="p-wins" id="gpw-${i}">${p.guessPoints||0}</div>
+        <div class="p-sub">pot wins</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// Anyone can submit their own guess
+window.submitGuess = async function(nameKey, dreidelIdx) {
+  const gs = cachedRoom?.gameState;
+  if (!gs || gs.showResults || gs.showNext) return;
+  await update(ref(db, `rooms2/${roomCode}/gameState/guesses`), { [nameKey]: dreidelIdx });
+};
+
+window.hostTriggerGuessSpin = async function() {
+  if (!amHost || animating) return;
+  const gs      = cachedRoom.gameState;
+  const players = rosterArr(cachedRoom.roster);
+  const active  = players.map(p => p.name);
+
+  // Charge everyone
+  const s = cachedRoom.settings;
+  const newPot = (gs.guessPot || 0) + players.length * s.stake;
+  const rosterUpdate = {};
+  players.forEach(p => { rosterUpdate[`roster/${escKey(p.name)}/sessionNet`] = (p.sessionNet||0) - s.stake; });
+
+  const landed = DREIDEL[Math.floor(Math.random() * DREIDEL.length)];
+  await update(roomRef, {
+    ...rosterUpdate,
+    'gameState/guessPot':    newPot,
+    'gameState/spinCount':   (gs.spinCount||0) + 1,
+    'gameState/spinTrigger': { activePlayers: active, landed, isPlayoff: false, timestamp: Date.now() }
+  });
+};
+
+window.hostTriggerPlayoffSpin = async function() {
+  if (!amHost || animating) return;
+  const gs     = cachedRoom.gameState;
+  const active = gs.playoffNames;
+  const landed = DREIDEL[Math.floor(Math.random() * DREIDEL.length)];
+  await update(ref(db, `rooms2/${roomCode}/gameState`), {
+    spinTrigger: { activePlayers: active, landed, isPlayoff: true, timestamp: Date.now() }
+  });
+};
+
+async function animateGuessSpin(room) {
+  if (animating) return;
+  animating = true;
+  $('guess-spin-btn').disabled    = true;
+  $('guess-playoff-btn').disabled = true;
+
+  const gs      = room.gameState;
+  const trigger = gs.spinTrigger;
+  const players = rosterArr(room.roster);
+  const s       = room.settings;
+  const landed  = trigger.landed;
+  const active  = trigger.activePlayers;
+
+  // Dim non-active
+  players.forEach((p,i) => {
+    $(`gpc-${i}`)?.classList.toggle('dimmed', !active.includes(p.name));
+    const pr = $(`gpr-${i}`);
+    if (pr && active.includes(p.name)) { pr.textContent = '...'; pr.className = 'p-result'; }
+  });
+
+  const activeIdxs = players.map((p,i) => active.includes(p.name) ? i : -1).filter(i => i >= 0);
+  activeIdxs.forEach(i => $(`gpc-${i}`)?.classList.add('spinning'));
+
+  const dur = 1200 + Math.random() * 700;
+  const iv  = setInterval(() => {
+    activeIdxs.forEach(i => { const el = $(`gdi-${i}`); if (el) el.textContent = SPIN_EMOJIS[Math.floor(Math.random()*SPIN_EMOJIS.length)]; });
+  }, 75);
+
+  await delay(dur);
+  clearInterval(iv);
+
+  // Land — show same letter for everyone
+  activeIdxs.forEach(i => {
+    $(`gpc-${i}`)?.classList.remove('spinning');
+    const di = $(`gdi-${i}`); if (di) di.textContent = landed.heb;
+    const pr = $(`gpr-${i}`); if (pr) { pr.textContent = landed.name + '!'; pr.className = `p-result ${landed.cls}`; }
+  });
+
+  await delay(400);
+
+  if (amHost) await resolveGuessSpin(room, trigger);
+  animating = false;
+}
+
+async function resolveGuessSpin(room, trigger) {
+  const players = rosterArr(room.roster);
+  const s       = room.settings;
+  const gs      = room.gameState;
+  const landed  = trigger.landed;
+  const active  = trigger.activePlayers;
+  const guesses = gs.guesses || {};
+
+  // Who guessed right among active players
+  const correct = active.filter(n => {
+    const idx = guesses[escKey(n)];
+    return idx !== undefined && DREIDEL[idx].name === landed.name;
+  });
+  const wrong = active.filter(n => !correct.includes(n));
+
+  const roster = {};
+  players.forEach(p => { roster[escKey(p.name)] = { ...p }; });
+
+  let gsUpdate = {
+    lastSpin:    { [landed.name]: landed },
+    spinTrigger: null,
+    showResults: true,
+    showNext:    true,
+    guesses:     {}
+  };
+
+  if (correct.length === 0) {
+    // Nobody right — pot rolls over
+    const msg = trigger.isPlayoff
+      ? `Neither guessed right! Pot grows to $${gs.guessPot} — everyone plays next! 🏦`
+      : `Nobody guessed ${landed.name}! Pot grows to $${gs.guessPot}! 🏦`;
+    gsUpdate.statusMsg   = msg;
+    gsUpdate.inPlayoff   = false;
+    gsUpdate.playoffNames = [];
+    gsUpdate.tieMsg      = '';
+    gsUpdate.lastResults = buildGuessResultsHTML(active, guesses, landed, correct, null, s.stake, gs.guessPot);
+
+  } else if (correct.length === 1) {
+    const winName = correct[0];
+    const won     = gs.guessPot;
+    roster[escKey(winName)].sessionNet   = (roster[escKey(winName)].sessionNet || 0) + won;
+    roster[escKey(winName)].guessPoints  = (roster[escKey(winName)].guessPoints || 0) + 1;
+    gsUpdate.guessPot    = 0;
+    gsUpdate.statusMsg   = `🎉 ${winName} takes the $${won} pot!`;
+    gsUpdate.inPlayoff   = false;
+    gsUpdate.playoffNames = [];
+    gsUpdate.tieMsg      = '';
+    gsUpdate.lastResults = buildGuessResultsHTML(active, guesses, landed, correct, winName, s.stake, won);
+
+    // Check session winner
+    const updated = players.map(p => ({...p, ...roster[escKey(p.name)]}));
+    const gameWinner = updated.find(p => (p.guessPoints||0) >= s.pointsGoal);
+    if (gameWinner) gsUpdate.winner = gameWinner.name;
+
+  } else {
+    // Playoff
+    gsUpdate.inPlayoff    = true;
+    gsUpdate.playoffNames = correct;
+    gsUpdate.tieMsg       = `⚔️ ${correct.join(' & ')} both guessed right — playoff spin!`;
+    gsUpdate.statusMsg    = `Playoff! ${correct.join(' & ')} spin again for the $${gs.guessPot} pot!`;
+    gsUpdate.showNext     = false; // go straight to playoff spin
+    gsUpdate.lastResults  = buildGuessResultsHTML(active, guesses, landed, correct, null, s.stake, gs.guessPot);
+  }
+
+  const updates = { gameState: { ...gs, ...gsUpdate } };
+  players.forEach(p => { updates[`roster/${escKey(p.name)}`] = roster[escKey(p.name)]; });
+  await update(roomRef, updates);
+
+  if (gsUpdate.winner) {
+    await delay(800);
+    await update(roomRef, { phase: 'winner', 'gameState/winnerName': gsUpdate.winner });
+  }
+}
+
+function buildGuessResultsHTML(active, guesses, landed, correct, winName, stake, pot) {
+  let html = `<h4>📋 Landed: ${landed.heb} ${landed.name} — Pot: $${pot}</h4>`;
+  active.forEach(name => {
+    const idx  = guesses[escKey(name)];
+    const g    = idx !== undefined ? DREIDEL[idx] : null;
+    const isCorrect = correct.includes(name);
+    const isWinner  = name === winName;
+    html += `<div class="result-row">
+      <span class="result-heb">${g ? g.heb : '?'}</span>
+      <span class="result-name">${name} guessed <em>${g ? g.name : '?'}</em></span>
+      ${isWinner
+        ? `<span class="result-badge badge-win">🏆 Takes $${pot}!</span>`
+        : isCorrect
+          ? `<span class="result-badge badge-correct">✅ Playoff!</span>`
+          : `<span class="result-badge badge-wrong">❌ -$${stake}</span>`}
+    </div>`;
+  });
+  return html;
+}
+
+window.hostNextGuessSpin = async function() {
+  if (!amHost) return;
+  await update(ref(db, `rooms2/${roomCode}/gameState`), {
+    showResults:  false,
+    showNext:     false,
+    nextTs:       Date.now(),
+    statusMsg:    cachedRoom.gameState?.guessPot > 0
+      ? `Pot is $${cachedRoom.gameState.guessPot} — everyone pick a letter!`
+      : 'Pick your letter, then wait for the spin!',
+    tieMsg:       '',
+    inPlayoff:    false,
+    playoffNames: [],
+    guesses:      {}
+  });
+};
+
+function applyNextGuess(room) {
+  $('guess-results-banner').style.display = 'none';
+  $('guess-tie-notice').style.display     = 'none';
+  const gs = room.gameState;
+  $('guess-status').textContent = gs?.statusMsg || 'Pick your letter!';
+  // Undim all
+  rosterArr(room.roster).forEach((_,i) => $(`gpc-${i}`)?.classList.remove('dimmed'));
+  $('guess-spin-btn').style.display    = 'block';
+  $('guess-spin-btn').disabled         = true; // disabled until all guess
+  $('guess-playoff-btn').style.display = 'none';
+  $('guess-next-btn').style.display    = 'none';
+}
+
+// ══════════════════════════════════
+// LEDGERS
+// ══════════════════════════════════
+// Ledger 1: round progress (score / guessPoints) — resets each round
+// Ledger 2: session $ (sessionNet) — accumulates across rounds, only updates on round win
+
+function renderBothLedgers(roster, s, wrapId, roundRowsId, sessionRowsId) {
+  const players = rosterArr(roster);
+  const wrapper = $(wrapId);
+  if (!wrapper) return;
+  wrapper.style.display = 'grid';
+
+  // ── Ledger 1: Round progress ──
+  const isGuess    = s.variant === 'guess';
+  const isBestOf1  = !isGuess && s.winMode === 'rounds' && s.totalRounds === 1;
+  const roundEl    = $(roundRowsId);
+
+  // Hide round ledger when best-of-1 (only $ matters) or guess (pot wins shown in scoreboard)
+  const showRound = !isBestOf1;
+  roundEl?.closest('.ledger-panel')?.parentElement && (roundEl.closest('.ledger-panel').style.display = showRound ? 'block' : 'none');
+
+  if (showRound && roundEl) {
+    const sortKey  = isGuess ? 'guessPoints' : 'score';
+    const goal     = isGuess ? s.pointsGoal : s.totalRounds;
+    const sorted   = [...players].sort((a,b) => (b[sortKey]||0) - (a[sortKey]||0));
+    const maxVal   = Math.max(...players.map(p => p[sortKey]||0), 1);
+    roundEl.innerHTML = sorted.map(p => {
+      const val  = p[sortKey] || 0;
+      const pct  = Math.round((val / goal) * 100);
+      const leader = val === maxVal && val > 0;
+      return `
+        <div class="ledger-row">
+          <span class="ledger-name">${leader ? '🥇' : '·'} ${p.name}</span>
+          <div class="ledger-bar-wrap"><div class="ledger-bar blue" style="width:${pct}%"></div></div>
+          <span class="ledger-val" style="color:var(--blue-bright)">${val}/${goal}</span>
+        </div>`;
+    }).join('');
+  }
+
+  // ── Ledger 2: Session $ ──
+  const sessionEl = $(sessionRowsId);
+  if (sessionEl) {
+    const anyMoney = players.some(p => (p.sessionNet||0) !== 0);
+    if (!anyMoney) {
+      sessionEl.innerHTML = '<div style="color:var(--silver);font-style:italic;font-size:0.82rem;">No payouts yet</div>';
+    } else {
+      const sorted = [...players].sort((a,b) => (b.sessionNet||0) - (a.sessionNet||0));
+      const maxAbs = Math.max(...players.map(p => Math.abs(p.sessionNet||0)), 1);
+      sessionEl.innerHTML = sorted.map(p => {
+        const net    = p.sessionNet || 0;
+        const sign   = net > 0 ? '+' : '';
+        const cls    = net > 0 ? 'pos' : net < 0 ? 'neg' : 'zero';
+        const barCls = net > 0 ? 'up' : 'down';
+        const barPct = Math.round((Math.abs(net) / maxAbs) * 100);
+        const arrow  = net > 0 ? '▲' : net < 0 ? '▼' : '–';
+        return `
+          <div class="ledger-row">
+            <span class="ledger-name">${arrow} ${p.name}</span>
+            <div class="ledger-bar-wrap"><div class="ledger-bar ${barCls}" style="width:${barPct}%"></div></div>
+            <span class="ledger-val ${cls}">${sign}$${net}</span>
+          </div>`;
+      }).join('');
+    }
+  }
+}
+
+// ══════════════════════════════════
+// WINNER
+// ══════════════════════════════════
+function showWinnerOverlay(room) {
+  const gs      = room.gameState;
+  const s       = room.settings;
+  const players = rosterArr(room.roster);
+  const winner  = players.find(p => p.name === gs.winnerName);
+  if (!winner) return;
+
+  $('ov-winner-name').textContent = `🎉 ${winner.name}`;
+  if (s.variant === 'classic') {
+    $('ov-winner-detail').textContent = s.winMode === 'rounds'
+      ? `Won ${winner.score||0} rounds! Net: ${winner.sessionNet >= 0 ? '+' : ''}$${winner.sessionNet||0}`
+      : `Earned $${winner.sessionNet||0}`;
+  } else {
+    $('ov-winner-detail').textContent = `First to ${s.pointsGoal} pot wins! Net: ${winner.sessionNet >= 0 ? '+' : ''}$${winner.sessionNet||0}`;
+  }
+  $('btn-play-again').style.display  = amHost ? 'block' : 'none';
+  $('winner-host-note').style.display = amHost ? 'none' : 'block';
+  $('ov-winner').classList.add('show');
+}
+
+window.hostPlayAgain = async function() {
+  if (!amHost) return;
+  $('ov-winner').classList.remove('show');
+  // Reset roster nets but keep names
+  const cleanRoster = {};
+  rosterArr(cachedRoom.roster).forEach(p => {
+    cleanRoster[escKey(p.name)] = { name: p.name, sessionNet:0, score:0, guessPoints:0 };
+  });
+  await update(roomRef, {
+    phase: 'lobby',
+    roster: cleanRoster,
+    gameState: null
+  });
+};
+
+window.confirmReset = async function() {
+  if (!confirm('Return to lobby?')) return;
+  if (amHost) {
+    await update(roomRef, { phase: 'lobby', gameState: null });
+  }
+};
+</script>
+</body>
+</html>
