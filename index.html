@@ -726,7 +726,7 @@ window.hostSetWinMode = function(m) {
   pushSettings();
 };
 
-function pushSettings() {
+window.pushSettings = function() {
   if (!amHost) return;
   const variant  = $('vbtn-classic').classList.contains('active') ? 'classic' : 'guess';
   const winMode  = $('mpbtn-rounds').classList.contains('active') ? 'rounds' : 'points';
