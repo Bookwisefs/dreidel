@@ -976,12 +976,13 @@ async function resolveClassicSpin(room, trigger) {
   };
 
   if (winners.length > 1) {
-    // Tie — tiebreaker spin, no score or money changes yet
-    gsUpdate.tieMsg       = `🔄 Tie! ${winners.join(' & ')} — tiebreaker!`;
-    gsUpdate.statusMsg    = 'Tiebreaker!';
+    // Tie — go straight to tiebreaker, do NOT show Next Spin (that would clear inPlayoff)
+    gsUpdate.tieMsg       = `🔄 Tie! ${winners.join(' & ')} — tiebreaker spin!`;
+    gsUpdate.statusMsg    = `Tiebreaker: ${winners.join(' & ')} spin again!`;
     gsUpdate.inPlayoff    = true;
     gsUpdate.playoffNames = winners;
-    gsUpdate.spinCount    = gs.spinCount || 0; // don't count tiebreaker as a real spin
+    gsUpdate.spinCount    = gs.spinCount || 0; // tiebreaker doesn't consume a spin
+    gsUpdate.showNext     = false;             // host spins again immediately (tied players only)
     gsUpdate.lastResults  = buildClassicResultsHTML(active, results, null, false, roundPot, s.stake, null);
   } else {
     const winName  = winners[0];
@@ -1146,7 +1147,7 @@ function renderGuessGrid(players, guesses, activeNames, locked) {
   $('guess-grid').innerHTML = activeNames.map(name => {
     const selectedIdx = guesses[escKey(name)];
     const isMe = name === myName;
-    const canGuess = isMe && !locked;
+    const canGuess = (isMe || amHost) && !locked;
     return `
       <div class="guess-player-row">
         <div class="guess-player-name">🎭 ${name}${isMe ? ' (you)' : ''} — ${selectedIdx !== undefined ? '✅ locked in' : 'pick a letter:'}</div>
