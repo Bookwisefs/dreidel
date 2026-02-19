@@ -634,9 +634,10 @@ function handleRoomUpdate(room) {
     const count = rosterArr(room.roster).length;
     if (amHost) $('btn-start-game').disabled = count < 2;
   } else if (phase === 'classic') {
-    if (!animating) renderClassicFromState(room);
+    // Only skip mid-animation; always render once resolve is written
+    if (!animating || !room.gameState?.spinTrigger) renderClassicFromState(room);
   } else if (phase === 'guess') {
-    if (!animating) renderGuessFromState(room);
+    if (!animating || !room.gameState?.spinTrigger) renderGuessFromState(room);
   } else if (phase === 'winner') {
     showWinnerOverlay(room);
   }
@@ -939,6 +940,11 @@ async function animateClassicSpin(room) {
   if (amHost) await resolveClassicSpin(room, trigger);
 
   animating = false;
+  // Re-render with latest state (Firebase listener skipped while animating)
+  if (cachedRoom) {
+    if (cachedRoom.phase === 'classic') renderClassicFromState(cachedRoom);
+    else if (cachedRoom.phase === 'guess') renderGuessFromState(cachedRoom);
+  }
 };
 
 async function resolveClassicSpin(room, trigger) {
@@ -999,7 +1005,9 @@ async function resolveClassicSpin(room, trigger) {
     if (gameWinner) gsUpdate.winner = gameWinner.name;
   }
 
-  const updates = { gameState: { ...gs, ...gsUpdate } };
+  // Write gameState fields as explicit paths to avoid Firebase object-merge issues
+  const updates = {};
+  Object.entries(gsUpdate).forEach(([k,v]) => { updates[`gameState/${k}`] = v; });
   players.forEach(p => { updates[`roster/${escKey(p.name)}`] = roster[escKey(p.name)]; });
   await update(roomRef, updates);
 
@@ -1242,6 +1250,10 @@ async function animateGuessSpin(room) {
 
   if (amHost) await resolveGuessSpin(room, trigger);
   animating = false;
+  if (cachedRoom) {
+    if (cachedRoom.phase === 'classic') renderClassicFromState(cachedRoom);
+    else if (cachedRoom.phase === 'guess') renderGuessFromState(cachedRoom);
+  }
 }
 
 async function resolveGuessSpin(room, trigger) {
@@ -1308,7 +1320,8 @@ async function resolveGuessSpin(room, trigger) {
     gsUpdate.lastResults  = buildGuessResultsHTML(active, guesses, landed, correct, null, s.stake, gs.guessPot);
   }
 
-  const updates = { gameState: { ...gs, ...gsUpdate } };
+  const updates = {};
+  Object.entries(gsUpdate).forEach(([k,v]) => { updates[`gameState/${k}`] = v; });
   players.forEach(p => { updates[`roster/${escKey(p.name)}`] = roster[escKey(p.name)]; });
   await update(roomRef, updates);
 
