@@ -1203,16 +1203,8 @@ window.hostTriggerGuessSpin = async function() {
   const players = rosterArr(cachedRoom.roster);
   const active  = players.map(p => p.name);
 
-  // Charge everyone
-  const s = cachedRoom.settings;
-  const newPot = (gs.guessPot || 0) + players.length * s.stake;
-  // Stake deduction happens in resolveGuessSpin after spin
-
   const landed = DREIDEL[Math.floor(Math.random() * DREIDEL.length)];
   await update(roomRef, {
-    ...rosterUpdate,
-    'gameState/guessPot':    newPot,
-    'gameState/spinCount':   (gs.spinCount||0) + 1,
     'gameState/spinTrigger': { activePlayers: active, landed, isPlayoff: false, timestamp: Date.now() }
   });
 };
