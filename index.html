@@ -343,21 +343,25 @@
         </div>
       </div>
 
-      <div class="panel">
-        <h3>🏆 Win Condition</h3>
+      <div class="panel" id="win-condition-panel">
+        <h3>🏆 Win Condition <span style="font-size:0.78rem;color:var(--silver);font-family:'Crimson Pro',serif;font-style:italic;">(classic only)</span></h3>
         <div class="mode-pill">
-          <button class="mode-pill-btn active" id="mpbtn-rounds" onclick="hostSetWinMode('rounds')">🏅 Best of Rounds<br><span style="font-size:0.78rem;">Most round wins</span></button>
+          <button class="mode-pill-btn active" id="mpbtn-rounds" onclick="hostSetWinMode('rounds')">🏅 Best of Rounds<br><span style="font-size:0.78rem;">Most spin-wins takes pot</span></button>
           <div class="mode-pill-divider"></div>
-          <button class="mode-pill-btn" id="mpbtn-points" onclick="hostSetWinMode('points')">⭐ First to Points<br><span style="font-size:0.78rem;">Race to a total</span></button>
+          <button class="mode-pill-btn" id="mpbtn-points" onclick="hostSetWinMode('points')">⭐ First to N wins<br><span style="font-size:0.78rem;">Race to spin-win target</span></button>
         </div>
         <div id="win-input-rounds" style="margin-top:12px;">
-          <label>Total rounds to play</label>
+          <label>Number of spins per round</label>
           <input type="number" id="total-rounds" value="10" min="1" oninput="pushSettings()">
         </div>
         <div id="win-input-points" style="margin-top:12px;display:none;">
-          <label>Points / pot-wins needed to win</label>
-          <input type="number" id="points-goal" value="50" min="1" oninput="pushSettings()">
+          <label>Spin-wins needed to take the pot</label>
+          <input type="number" id="points-goal" value="5" min="1" oninput="pushSettings()">
         </div>
+      </div>
+      <div class="panel" id="guess-info-panel" style="display:none;">
+        <h3>🎯 Guess Mode</h3>
+        <p style="color:var(--silver);font-size:0.9rem;">Every spin is for money. Everyone pays the stake each spin. Sole correct guesser wins the whole pot. Pot grows until someone wins it solo.</p>
       </div>
 
       <div class="panel">
@@ -714,7 +718,8 @@ window.hostSetVariant = function(v) {
   if (!amHost) return;
   document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
   $(`vbtn-${v}`).classList.add('active');
-  if (v === 'guess') hostSetWinMode('points');
+  $('win-condition-panel').style.display = v === 'classic' ? 'block' : 'none';
+  $('guess-info-panel').style.display    = v === 'guess'   ? 'block' : 'none';
   pushSettings();
 };
 
@@ -745,6 +750,8 @@ function syncSettingsDisplay(s) {
   if (s.variant) {
     document.querySelectorAll('.variant-btn').forEach(b => b.classList.remove('active'));
     $(`vbtn-${s.variant}`)?.classList.add('active');
+    $('win-condition-panel').style.display = s.variant === 'classic' ? 'block' : 'none';
+    $('guess-info-panel').style.display    = s.variant === 'guess'   ? 'block' : 'none';
   }
   if (s.winMode) {
     $('mpbtn-rounds').classList.toggle('active', s.winMode === 'rounds');
@@ -763,12 +770,11 @@ function syncSettingsDisplay(s) {
 window.hostStartGame = async function() {
   if (!amHost) return;
   const s       = cachedRoom.settings;
-  const players = rosterArr(cachedRoom.roster).map(p => ({
-    ...p, sessionNet:0, score:0, guessPoints:0
-  }));
-  // Write cleaned roster back
+  // Keep sessionNet across games — only reset per-round stats
   const cleanRoster = {};
-  players.forEach(p => { cleanRoster[escKey(p.name)] = { name:p.name, sessionNet:0, score:0, guessPoints:0 }; });
+  rosterArr(cachedRoom.roster).forEach(p => {
+    cleanRoster[escKey(p.name)] = { name:p.name, sessionNet: p.sessionNet||0, score:0, guessPoints:0 };
+  });
 
   const gs = {
     spinCount:   0,
@@ -1200,8 +1206,7 @@ window.hostTriggerGuessSpin = async function() {
   // Charge everyone
   const s = cachedRoom.settings;
   const newPot = (gs.guessPot || 0) + players.length * s.stake;
-  const rosterUpdate = {};
-  players.forEach(p => { rosterUpdate[`roster/${escKey(p.name)}/sessionNet`] = (p.sessionNet||0) - s.stake; });
+  // Stake deduction happens in resolveGuessSpin after spin
 
   const landed = DREIDEL[Math.floor(Math.random() * DREIDEL.length)];
   await update(roomRef, {
@@ -1275,15 +1280,13 @@ async function resolveGuessSpin(room, trigger) {
   const s       = room.settings;
   const gs      = room.gameState;
   const landed  = trigger.landed;
-  const active  = trigger.activePlayers;
+  const active  = trigger.activePlayers; // all players for normal spin, just 2 for playoff
   const guesses = gs.guesses || {};
 
-  // Who guessed right among active players
   const correct = active.filter(n => {
     const idx = guesses[escKey(n)];
     return idx !== undefined && DREIDEL[idx].name === landed.name;
   });
-  const wrong = active.filter(n => !correct.includes(n));
 
   const roster = {};
   players.forEach(p => { roster[escKey(p.name)] = { ...p }; });
@@ -1296,42 +1299,50 @@ async function resolveGuessSpin(room, trigger) {
     guesses:     {}
   };
 
+  // ── Normal spin (not playoff): everyone pays stake into pot ──
+  // For playoff: pot already has the money, no new charges
+  let currentPot = gs.guessPot || 0;
+  if (!trigger.isPlayoff) {
+    const allPlayers = players; // everyone pays, even non-active
+    allPlayers.forEach(p => {
+      roster[escKey(p.name)].sessionNet = (p.sessionNet || 0) - s.stake;
+    });
+    currentPot += allPlayers.length * s.stake;
+    gsUpdate.guessPot = currentPot;
+  }
+
   if (correct.length === 0) {
-    // Nobody right — pot rolls over
+    // Nobody right — pot rolls over to next spin
     const msg = trigger.isPlayoff
-      ? `Neither guessed right! Pot grows to $${gs.guessPot} — everyone plays next! 🏦`
-      : `Nobody guessed ${landed.name}! Pot grows to $${gs.guessPot}! 🏦`;
-    gsUpdate.statusMsg   = msg;
-    gsUpdate.inPlayoff   = false;
+      ? `Neither guessed right! Pot is $${currentPot} — everyone pays again next spin! 🏦`
+      : `Nobody guessed ${landed.name}! Pot grows to $${currentPot}! 🏦`;
+    gsUpdate.statusMsg    = msg;
+    gsUpdate.inPlayoff    = false;
     gsUpdate.playoffNames = [];
-    gsUpdate.tieMsg      = '';
-    gsUpdate.lastResults = buildGuessResultsHTML(active, guesses, landed, correct, null, s.stake, gs.guessPot);
+    gsUpdate.tieMsg       = '';
+    gsUpdate.lastResults  = buildGuessResultsHTML(players, active, guesses, landed, correct, null, s.stake, currentPot, trigger.isPlayoff);
 
   } else if (correct.length === 1) {
+    // Sole winner — takes entire pot
     const winName = correct[0];
-    const won     = gs.guessPot;
-    roster[escKey(winName)].sessionNet   = (roster[escKey(winName)].sessionNet || 0) + won;
-    roster[escKey(winName)].guessPoints  = (roster[escKey(winName)].guessPoints || 0) + 1;
-    gsUpdate.guessPot    = 0;
-    gsUpdate.statusMsg   = `🎉 ${winName} takes the $${won} pot!`;
-    gsUpdate.inPlayoff   = false;
+    roster[escKey(winName)].sessionNet  = (roster[escKey(winName)].sessionNet || 0) + currentPot;
+    roster[escKey(winName)].guessPoints = (roster[escKey(winName)].guessPoints || 0) + 1;
+    gsUpdate.guessPot     = 0;
+    gsUpdate.statusMsg    = `🎉 ${winName} takes the $${currentPot} pot!`;
+    gsUpdate.inPlayoff    = false;
     gsUpdate.playoffNames = [];
-    gsUpdate.tieMsg      = '';
-    gsUpdate.lastResults = buildGuessResultsHTML(active, guesses, landed, correct, winName, s.stake, won);
-
-    // Check session winner
-    const updated = players.map(p => ({...p, ...roster[escKey(p.name)]}));
-    const gameWinner = updated.find(p => (p.guessPoints||0) >= s.pointsGoal);
-    if (gameWinner) gsUpdate.winner = gameWinner.name;
+    gsUpdate.tieMsg       = '';
+    gsUpdate.lastResults  = buildGuessResultsHTML(players, active, guesses, landed, correct, winName, s.stake, currentPot, trigger.isPlayoff);
 
   } else {
-    // Playoff
+    // Multiple correct — playoff, no extra charge, pot stays
+    gsUpdate.guessPot     = currentPot;
     gsUpdate.inPlayoff    = true;
     gsUpdate.playoffNames = correct;
-    gsUpdate.tieMsg       = `⚔️ ${correct.join(' & ')} both guessed right — playoff spin!`;
-    gsUpdate.statusMsg    = `Playoff! ${correct.join(' & ')} spin again for the $${gs.guessPot} pot!`;
-    gsUpdate.showNext     = false; // go straight to playoff spin
-    gsUpdate.lastResults  = buildGuessResultsHTML(active, guesses, landed, correct, null, s.stake, gs.guessPot);
+    gsUpdate.tieMsg       = `⚔️ ${correct.join(' & ')} both guessed right — playoff for $${currentPot}!`;
+    gsUpdate.statusMsg    = `Playoff! ${correct.join(' & ')} spin again — no extra charge!`;
+    gsUpdate.showNext     = false;
+    gsUpdate.lastResults  = buildGuessResultsHTML(players, active, guesses, landed, correct, null, s.stake, currentPot, trigger.isPlayoff);
   }
 
   const updates = {};
@@ -1345,21 +1356,37 @@ async function resolveGuessSpin(room, trigger) {
   }
 }
 
-function buildGuessResultsHTML(active, guesses, landed, correct, winName, stake, pot) {
-  let html = `<h4>📋 Landed: ${landed.heb} ${landed.name} — Pot: $${pot}</h4>`;
-  active.forEach(name => {
-    const idx  = guesses[escKey(name)];
-    const g    = idx !== undefined ? DREIDEL[idx] : null;
-    const isCorrect = correct.includes(name);
-    const isWinner  = name === winName;
-    html += `<div class="result-row">
-      <span class="result-heb">${g ? g.heb : '?'}</span>
-      <span class="result-name">${name} guessed <em>${g ? g.name : '?'}</em></span>
-      ${isWinner
-        ? `<span class="result-badge badge-win">🏆 Takes $${pot}!</span>`
-        : isCorrect
-          ? `<span class="result-badge badge-correct">✅ Playoff!</span>`
-          : `<span class="result-badge badge-wrong">❌ -$${stake}</span>`}
+function buildGuessResultsHTML(allPlayers, active, guesses, landed, correct, winName, stake, pot, isPlayoff) {
+  const netStr = winName
+    ? `<h4>📋 ${landed.heb} ${landed.name} — ${winName} wins $${pot}!</h4>`
+    : `<h4>📋 ${landed.heb} ${landed.name} — Pot now $${pot}</h4>`;
+  let html = netStr;
+  // Show ALL players so everyone sees their running position
+  allPlayers.forEach(p => {
+    const name = p.name;
+    const wasActive  = active.includes(name);
+    const idx        = guesses[escKey(name)];
+    const g          = idx !== undefined ? DREIDEL[idx] : null;
+    const isCorrect  = correct.includes(name);
+    const isWinner   = name === winName;
+    let badge = '';
+    if (isWinner) {
+      const net = pot - (isPlayoff ? 0 : stake); // playoff winner didn't pay this spin
+      badge = `<span class="result-badge badge-win">🏆 +$${pot} (net ${net >= 0 ? '+' : ''}$${net})</span>`;
+    } else if (isCorrect) {
+      badge = `<span class="result-badge badge-correct">✅ Playoff!</span>`;
+    } else if (wasActive && !isPlayoff) {
+      badge = `<span class="result-badge badge-wrong">-$${stake}</span>`;
+    } else if (!wasActive && !isPlayoff) {
+      badge = `<span class="result-badge badge-wrong">-$${stake}</span>`;
+    } else if (isPlayoff && !isCorrect && wasActive) {
+      badge = `<span style="font-size:0.78rem;color:var(--silver);">no win</span>`;
+    }
+    const dimStyle = (!wasActive && isPlayoff) ? 'opacity:0.45;' : '';
+    html += `<div class="result-row" style="${dimStyle}">
+      <span class="result-heb">${wasActive ? (g ? g.heb : '?') : '–'}</span>
+      <span class="result-name">${name}${wasActive ? ` guessed <em>${g ? g.name : '?'}</em>` : ' (watching)'}</span>
+      ${badge}
     </div>`;
   });
   return html;
@@ -1367,16 +1394,17 @@ function buildGuessResultsHTML(active, guesses, landed, correct, winName, stake,
 
 window.hostNextGuessSpin = async function() {
   if (!amHost) return;
+  const pot = cachedRoom.gameState?.guessPot || 0;
   await update(ref(db, `rooms2/${roomCode}/gameState`), {
     showResults:  false,
     showNext:     false,
     nextTs:       Date.now(),
-    statusMsg:    cachedRoom.gameState?.guessPot > 0
-      ? `Pot is $${cachedRoom.gameState.guessPot} — everyone pick a letter!`
+    statusMsg:    pot > 0
+      ? `Pot is $${pot} — everyone pick a letter!`
       : 'Pick your letter, then wait for the spin!',
     tieMsg:       '',
     inPlayoff:    false,
-    playoffNames: [],
+    playoffNames: [], // reset to all players after failed playoff
     guesses:      {}
   });
 };
@@ -1490,7 +1518,8 @@ window.hostPlayAgain = async function() {
   // Reset roster nets but keep names
   const cleanRoster = {};
   rosterArr(cachedRoom.roster).forEach(p => {
-    cleanRoster[escKey(p.name)] = { name: p.name, sessionNet:0, score:0, guessPoints:0 };
+    // Keep sessionNet — it tracks money across all games in this session
+    cleanRoster[escKey(p.name)] = { name: p.name, sessionNet: p.sessionNet||0, score:0, guessPoints:0 };
   });
   await update(roomRef, {
     phase: 'lobby',
